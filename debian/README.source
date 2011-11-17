@@ -1,0 +1,24 @@
+****    drm-dkms    ****
+
+Steps needed in order to build a drm backport.
+
+- cd $package_root
+- cp -r $path_to_kernel/drivers/gpu/drm .
+- mkdir include
+- cp -r $path_to_kernel/include/drm include
+- decide which modules you need
+  * modify the patch to the Makefiles to suit
+  * modify debian/dkms.conf.in to suit
+
+- build the package
+- install on a chroot of a version where it's going to be used
+- check the build log for errors
+- carefully revert any changes that change the API in ways that
+  prevent the module(s) from loading on the target distro
+- add such changes as quilt patches
+- repeat
+
+- when it builds fine, test installation on a real machine
+- note/hope that there are no unresolved symbols
+
+-> profit
