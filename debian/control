@@ -1,0 +1,15 @@
+Source: drm-dkms
+Section: kernel
+Priority: optional
+Maintainer: Timo Aaltonen <tjaalton@ubuntu.com>
+Build-Depends: debhelper (>= 7.0.50~), dkms (>=1.95)
+Standards-Version: 3.9.1
+
+Package: drm-dkms
+Architecture: amd64 i386
+Depends: dkms (>= 1.95),
+ linux-headers-generic (>= 2.6) | linux-headers-generic-pae (>= 2.6),
+ findutils (>= 4),
+ ${misc:Depends},
+Description: drm driver in DKMS format.
+ This package contains the drm driver in DKMS format.
