@@ -6,6 +6,7 @@ Steps needed in order to build a drm backport.
 - cp -r $path_to_kernel/drivers/gpu/drm .
 - mkdir include
 - cp -r $path_to_kernel/include/drm include
+- build the orig.tar.gz
 - decide which modules you need
   * modify the patch to the Makefiles for current version
   * modify debian/dkms.conf.in to suit
