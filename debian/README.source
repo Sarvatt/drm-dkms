@@ -7,8 +7,10 @@ Steps needed in order to build a drm backport.
 - mkdir include
 - cp -r $path_to_kernel/include/drm include
 - decide which modules you need
-  * modify the patch to the Makefiles to suit
+  * modify the patch to the Makefiles for current version
   * modify debian/dkms.conf.in to suit
+- check the includes from <drm/*.h>, and change them to
+  "*.h"
 
 - build the package
 - install on a chroot of a version where it's going to be used
