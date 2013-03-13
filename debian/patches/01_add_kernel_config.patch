@@ -1,43 +1,53 @@
---- drm-dkms.orig/Makefile	2011-11-11 16:46:13.794374354 +0200
-+++ drm-dkms/Makefile	2011-11-11 16:46:51.123501273 +0200
-@@ -2,7 +2,9 @@
+--- a/Makefile
++++ b/Makefile
+@@ -2,6 +2,8 @@
  # Makefile for the drm device driver.  This driver provides support for the
  # Direct Rendering Infrastructure (DRI) in XFree86 4.1.0 and higher.
  
--ccflags-y := -Iinclude/drm
 +include /boot/config-$(KVER)
 +
-+ccflags-y := -I/var/lib/dkms/drm-dkms/2.6.37rc3/build/include/drm
+ ccflags-y := -Iinclude/drm
  
  drm-y       :=	drm_auth.o drm_buffer.o drm_bufs.o drm_cache.o \
- 		drm_context.o drm_dma.o \
-@@ -24,16 +26,22 @@
- 
+@@ -31,23 +33,29 @@ CFLAGS_drm_trace_points.o := -I$(src)
  obj-$(CONFIG_DRM)	+= drm.o
+ obj-$(CONFIG_DRM_USB)   += drm_usb.o
  obj-$(CONFIG_DRM_TTM)	+= ttm/
 -obj-$(CONFIG_DRM_TDFX)	+= tdfx/
 -obj-$(CONFIG_DRM_R128)	+= r128/
--obj-$(CONFIG_DRM_RADEON)+= radeon/
--obj-$(CONFIG_DRM_MGA)	+= mga/
--obj-$(CONFIG_DRM_I810)	+= i810/
--obj-$(CONFIG_DRM_I830)	+= i830/
 +#obj-$(CONFIG_DRM_TDFX)	+= tdfx/
 +#obj-$(CONFIG_DRM_R128)	+= r128/
-+#obj-$(CONFIG_DRM_RADEON)+= radeon/
+ obj-$(CONFIG_DRM_RADEON)+= radeon/
+-obj-$(CONFIG_DRM_MGA)	+= mga/
+-obj-$(CONFIG_DRM_I810)	+= i810/
 +#obj-$(CONFIG_DRM_MGA)	+= mga/
 +#obj-$(CONFIG_DRM_I810)	+= i810/
-+#obj-$(CONFIG_DRM_I830)	+= i830/
  obj-$(CONFIG_DRM_I915)  += i915/
+-obj-$(CONFIG_DRM_MGAG200) += mgag200/
+-obj-$(CONFIG_DRM_CIRRUS_QEMU) += cirrus/
 -obj-$(CONFIG_DRM_SIS)   += sis/
 -obj-$(CONFIG_DRM_SAVAGE)+= savage/
 -obj-$(CONFIG_DRM_VMWGFX)+= vmwgfx/
 -obj-$(CONFIG_DRM_VIA)	+=via/
--obj-$(CONFIG_DRM_NOUVEAU) +=nouveau/
++#obj-$(CONFIG_DRM_MGAG200) += mgag200/
++#obj-$(CONFIG_DRM_CIRRUS_QEMU) += cirrus/
 +#obj-$(CONFIG_DRM_SIS)   += sis/
 +#obj-$(CONFIG_DRM_SAVAGE)+= savage/
 +#obj-$(CONFIG_DRM_VMWGFX)+= vmwgfx/
 +#obj-$(CONFIG_DRM_VIA)	+=via/
-+#obj-$(CONFIG_DRM_NOUVEAU) +=nouveau/
+ obj-$(CONFIG_DRM_NOUVEAU) +=nouveau/
+-obj-$(CONFIG_DRM_EXYNOS) +=exynos/
+-obj-$(CONFIG_DRM_GMA500) += gma500/
+-obj-$(CONFIG_DRM_UDL) += udl/
+-obj-$(CONFIG_DRM_AST) += ast/
+-obj-$(CONFIG_DRM_SHMOBILE) +=shmobile/
+-obj-$(CONFIG_DRM_TEGRA) += tegra/
++#obj-$(CONFIG_DRM_EXYNOS) +=exynos/
++#obj-$(CONFIG_DRM_GMA500) += gma500/
++#obj-$(CONFIG_DRM_UDL) += udl/
++#obj-$(CONFIG_DRM_AST) += ast/
++#obj-$(CONFIG_DRM_SHMOBILE) +=shmobile/
++#obj-$(CONFIG_DRM_TEGRA) += tegra/
  obj-y			+= i2c/
 +
 +all:
@@ -45,25 +55,3 @@
 +
 +clean:
 +	make -C /lib/modules/$(KVER)/build M=`pwd` clean
---- drm-dkms.orig/i915/Makefile	2011-11-11 16:46:13.774373750 +0200
-+++ drm-dkms/i915/Makefile	2011-11-11 16:47:16.004252394 +0200
-@@ -2,7 +2,7 @@
- # Makefile for the drm device driver.  This driver provides support for the
- # Direct Rendering Infrastructure (DRI) in XFree86 4.1.0 and higher.
- 
--ccflags-y := -Iinclude/drm
-+ccflags-y := -I/var/lib/dkms/drm-dkms/2.6.37rc3/build/include/ -I/var/lib/dkms/drm-dkms/2.6.37rc3/build/include/drm
- i915-y := i915_drv.o i915_dma.o i915_irq.o i915_mem.o \
- 	  i915_debugfs.o \
-           i915_suspend.o \
---- drm-dkms.orig/ttm/Makefile	2011-11-11 16:46:13.786374113 +0200
-+++ drm-dkms/ttm/Makefile	2011-11-11 16:47:38.556933240 +0200
-@@ -1,7 +1,7 @@
- #
- # Makefile for the drm device driver.  This driver provides support for the
- 
--ccflags-y := -Iinclude/drm
-+ccflags-y := -I/var/lib/dkms/drm-dkms/2.6.37rc3/build/include/drm
- ttm-y := ttm_agp_backend.o ttm_memory.o ttm_tt.o ttm_bo.o \
- 	ttm_bo_util.o ttm_bo_vm.o ttm_module.o \
- 	ttm_object.o ttm_lock.o ttm_execbuf_util.o ttm_page_alloc.o \
