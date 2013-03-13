@@ -2,7 +2,7 @@ Source: drm-dkms
 Section: kernel
 Priority: optional
 Maintainer: Timo Aaltonen <tjaalton@ubuntu.com>
-Build-Depends: debhelper (>= 7.0.50~), dkms (>=1.95)
+Build-Depends: debhelper (>= 7.0.50~), dkms (>=1.95), quilt
 Standards-Version: 3.9.4
 
 Package: drm-dkms
