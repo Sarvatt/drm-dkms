@@ -1,5 +1,5 @@
-drm-dkms (VERSION) UNRELEASED; urgency=low
+drm-dkms (3.8+fixes.0) UNRELEASED; urgency=low
 
-  * Initial release.
+  * Initial release based on f40ebd6b from drm-intel-fixes.
 
  -- Timo Aaltonen <tjaalton@ubuntu.com>  Thu, 17 Nov 2011 14:18:08 +0200
