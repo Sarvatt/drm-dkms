@@ -1,14 +1,16 @@
 --- a/Makefile
 +++ b/Makefile
-@@ -2,6 +2,8 @@
+@@ -2,7 +2,9 @@
  # Makefile for the drm device driver.  This driver provides support for the
  # Direct Rendering Infrastructure (DRI) in XFree86 4.1.0 and higher.
  
+-ccflags-y := -Iinclude/drm
 +include /boot/config-$(KVER)
 +
- ccflags-y := -Iinclude/drm
++ccflags-y := -I/var/lib/dkms/drm-dkms/3.8/build/include/drm
  
  drm-y       :=	drm_auth.o drm_buffer.o drm_bufs.o drm_cache.o \
+ 		drm_context.o drm_dma.o \
 @@ -31,23 +33,29 @@ CFLAGS_drm_trace_points.o := -I$(src)
  obj-$(CONFIG_DRM)	+= drm.o
  obj-$(CONFIG_DRM_USB)   += drm_usb.o
@@ -55,3 +57,14 @@
 +
 +clean:
 +	make -C /lib/modules/$(KVER)/build M=`pwd` clean
+--- a/i915/Makefile
++++ b/i915/Makefile
+@@ -2,7 +2,7 @@
+ # Makefile for the drm device driver.  This driver provides support for the
+ # Direct Rendering Infrastructure (DRI) in XFree86 4.1.0 and higher.
+ 
+-ccflags-y := -Iinclude/drm
++ccflags-y := -I/var/lib/dkms/drm-dkms/3.8/build/include/drm
+ i915-y := i915_drv.o i915_dma.o i915_irq.o \
+ 	  i915_debugfs.o \
+           i915_suspend.o \
