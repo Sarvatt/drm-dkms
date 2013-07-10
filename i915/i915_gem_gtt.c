@@ -190,7 +190,8 @@ static void gen6_ppgtt_insert_entries(struct i915_hw_ppgtt *ppgtt,
 	for_each_sg_page(pages->sgl, &sg_iter, pages->nents, 0) {
 		dma_addr_t page_addr;
 
-		page_addr = sg_page_iter_dma_address(&sg_iter);
+		page_addr = sg_dma_address(sg_iter.sg) +
+				(sg_iter.sg_pgoffset << PAGE_SHIFT);
 		pt_vaddr[act_pte] = gen6_pte_encode(ppgtt->dev, page_addr,
 						    cache_level);
 		if (++act_pte == I915_PPGTT_PT_ENTRIES) {
@@ -436,7 +437,8 @@ static void gen6_ggtt_insert_entries(struct drm_device *dev,
 	dma_addr_t addr;
 
 	for_each_sg_page(st->sgl, &sg_iter, st->nents, 0) {
-		addr = sg_page_iter_dma_address(&sg_iter);
+		addr = sg_dma_address(sg_iter.sg) +
+			(sg_iter.sg_pgoffset << PAGE_SHIFT);
 		iowrite32(gen6_pte_encode(dev, addr, level), &gtt_entries[i]);
 		i++;
 	}
