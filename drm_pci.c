@@ -152,7 +152,7 @@ static const char *drm_pci_get_name(struct drm_device *dev)
 	return pdriver->name;
 }
 
-int drm_pci_set_busid(struct drm_device *dev, struct drm_master *master)
+static int drm_pci_set_busid(struct drm_device *dev, struct drm_master *master)
 {
 	int len, ret;
 	struct pci_driver *pdriver = dev->driver->kdriver.pci;
@@ -194,9 +194,9 @@ err:
 	return ret;
 }
 
-int drm_pci_set_unique(struct drm_device *dev,
-		       struct drm_master *master,
-		       struct drm_unique *u)
+static int drm_pci_set_unique(struct drm_device *dev,
+			      struct drm_master *master,
+			      struct drm_unique *u)
 {
 	int domain, bus, slot, func, ret;
 	const char *bus_name;
@@ -266,7 +266,7 @@ static int drm_pci_irq_by_busid(struct drm_device *dev, struct drm_irq_busid *p)
 	return 0;
 }
 
-int drm_pci_agp_init(struct drm_device *dev)
+static int drm_pci_agp_init(struct drm_device *dev)
 {
 	if (drm_core_has_AGP(dev)) {
 		if (drm_pci_device_is_agp(dev))
@@ -367,6 +367,10 @@ int drm_get_pci_dev(struct pci_dev *pdev, const struct pci_device_id *ent,
 
 	list_add_tail(&dev->driver_item, &driver->device_list);
 
+	if (drm_core_check_feature(dev, DRIVER_MODESET))
+		idr_replace(&drm_minors_idr, dev->control, dev->control->index);
+	idr_replace(&drm_minors_idr, dev->primary, dev->primary->index);
+
 	DRM_INFO("Initialized %s %d.%d.%d %s for %s on minor %d\n",
 		 driver->name, driver->major, driver->minor, driver->patchlevel,
 		 driver->date, pci_name(pdev), dev->primary->index);
@@ -439,33 +443,6 @@ int drm_pci_init(struct drm_driver *driver, struct pci_driver *pdriver)
 	return 0;
 }
 
-#else
-
-int drm_pci_init(struct drm_driver *driver, struct pci_driver *pdriver)
-{
-	return -1;
-}
-
-#endif
-
-EXPORT_SYMBOL(drm_pci_init);
-
-/*@}*/
-void drm_pci_exit(struct drm_driver *driver, struct pci_driver *pdriver)
-{
-	struct drm_device *dev, *tmp;
-	DRM_DEBUG("\n");
-
-	if (driver->driver_features & DRIVER_MODESET) {
-		pci_unregister_driver(pdriver);
-	} else {
-		list_for_each_entry_safe(dev, tmp, &driver->device_list, driver_item)
-			drm_put_dev(dev);
-	}
-	DRM_INFO("Module unloaded\n");
-}
-EXPORT_SYMBOL(drm_pci_exit);
-
 int drm_pcie_get_speed_cap_mask(struct drm_device *dev, u32 *mask)
 {
 	struct pci_dev *root;
@@ -503,3 +480,30 @@ int drm_pcie_get_speed_cap_mask(struct drm_device *dev, u32 *mask)
 	return 0;
 }
 EXPORT_SYMBOL(drm_pcie_get_speed_cap_mask);
+
+#else
+
+int drm_pci_init(struct drm_driver *driver, struct pci_driver *pdriver)
+{
+	return -1;
+}
+
+#endif
+
+EXPORT_SYMBOL(drm_pci_init);
+
+/*@}*/
+void drm_pci_exit(struct drm_driver *driver, struct pci_driver *pdriver)
+{
+	struct drm_device *dev, *tmp;
+	DRM_DEBUG("\n");
+
+	if (driver->driver_features & DRIVER_MODESET) {
+		pci_unregister_driver(pdriver);
+	} else {
+		list_for_each_entry_safe(dev, tmp, &driver->device_list, driver_item)
+			drm_put_dev(dev);
+	}
+	DRM_INFO("Module unloaded\n");
+}
+EXPORT_SYMBOL(drm_pci_exit);
