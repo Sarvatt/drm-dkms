@@ -7,11 +7,11 @@
 -ccflags-y := -Iinclude/drm
 +include /boot/config-$(KVER)
 +
-+ccflags-y := -I/var/lib/dkms/drm-dkms/3.8/build/include/drm
++ccflags-y := -I/var/lib/dkms/drm-dkms/3.10.0/build/include/drm
  
  drm-y       :=	drm_auth.o drm_buffer.o drm_bufs.o drm_cache.o \
  		drm_context.o drm_dma.o \
-@@ -29,27 +31,34 @@ obj-$(CONFIG_DRM_KMS_HELPER) += drm_kms_
+@@ -29,27 +31,33 @@ obj-$(CONFIG_DRM_KMS_HELPER) += drm_kms_
  CFLAGS_drm_trace_points.o := -I$(src)
  
  obj-$(CONFIG_DRM)	+= drm.o
@@ -62,11 +62,10 @@
  obj-y			+= i2c/
 +
 +all:
-+       make -C /lib/modules/$(KVER)/build M=`pwd` modules
++	make -C /lib/modules/$(KVER)/build M=`pwd` modules
 +
 +clean:
-+       make -C /lib/modules/$(KVER)/build M=`pwd` clean
-+
++	make -C /lib/modules/$(KVER)/build M=`pwd` clean
 --- a/i915/Makefile
 +++ b/i915/Makefile
 @@ -2,7 +2,7 @@
