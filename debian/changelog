@@ -1,5 +1,5 @@
-drm-dkms (3.10.0+0) UNRELEASED; urgency=low
+drm-dkms (3.10.4+1ubuntu1) UNRELEASED; urgency=low
 
-  * Initial release based on 3.10.
+  * Switch to https://backports.wiki.kernel.org backports 3.10.4 package.
 
- -- Timo Aaltonen <tjaalton@ubuntu.com>  Thu, 17 Nov 2011 14:18:08 +0200
+ -- Robert Hooker <sarvatt@ubuntu.com>  Thu, 08 Aug 2013 13:22:35 -0400

@@ -15,6 +15,7 @@ SRC = $(TMP)/usr/src
 
 override_dh_auto_build:
 override_dh_auto_clean:
+override_dh_auto_test:
 
 override_dh_auto_install:
 	install -d "$(SRC)"
