@@ -1,1 +1,2 @@
 01-disable-unneeded-drivers.patch
+0001-fix_BACKPORT_BUILD_DMA_SHARED_HELPERS.patch
