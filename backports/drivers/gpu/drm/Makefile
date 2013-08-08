@@ -12,7 +12,8 @@ drm-y       :=	drm_auth.o drm_buffer.o drm_bufs.o drm_cache.o \
 		drm_platform.o drm_sysfs.o drm_hashtab.o drm_mm.o \
 		drm_crtc.o drm_modes.o drm_edid.o \
 		drm_info.o drm_debugfs.o drm_encoder_slave.o \
-		drm_trace_points.o drm_global.o drm_prime.o
+		drm_trace_points.o drm_global.o drm_prime.o \
+		drm_rect.o
 
 drm-$(CONFIG_COMPAT) += drm_ioc32.o
 drm-$(CPTCFG_DRM_GEM_CMA_HELPER) += drm_gem_cma_helper.o
@@ -48,6 +49,7 @@ obj-$(CPTCFG_DRM_EXYNOS) +=exynos/
 obj-$(CPTCFG_DRM_GMA500) += gma500/
 obj-$(CPTCFG_DRM_UDL) += udl/
 obj-$(CPTCFG_DRM_AST) += ast/
+obj-$(CPTCFG_DRM_RCAR_DU) += rcar-du/
 obj-$(CPTCFG_DRM_SHMOBILE) +=shmobile/
 obj-$(CPTCFG_DRM_OMAP)	+= omapdrm/
 obj-$(CPTCFG_DRM_TILCDC)	+= tilcdc/

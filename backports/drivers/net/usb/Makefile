@@ -10,7 +10,7 @@
 #obj-$(CPTCFG_USB_HSO)		+= hso.o
 #obj-$(CPTCFG_USB_NET_AX8817X)	+= asix.o
 #obj-$(CPTCFG_USB_NET_AX88179_178A)      += ax88179_178a.o
-obj-$(CPTCFG_USB_NET_CDCETHER)	+= cdc_ether.o
+#obj-$(CPTCFG_USB_NET_CDCETHER)	+= cdc_ether.o r815x.o
 #obj-$(CPTCFG_USB_NET_CDC_EEM)	+= cdc_eem.o
 #obj-$(CPTCFG_USB_NET_DM9601)	+= dm9601.o
 #obj-$(CPTCFG_USB_NET_SMSC75XX)	+= smsc75xx.o

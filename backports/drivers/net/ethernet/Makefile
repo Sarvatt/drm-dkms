@@ -6,9 +6,11 @@
 #obj-$(CONFIG_NET_VENDOR_8390) += 8390/
 #obj-$(CONFIG_NET_VENDOR_ADAPTEC) += adaptec/
 #obj-$(CONFIG_GRETH) += aeroflex/
+#obj-$(CONFIG_NET_VENDOR_ALLWINNER) += allwinner/
 #obj-$(CONFIG_NET_VENDOR_ALTEON) += alteon/
 #obj-$(CONFIG_NET_VENDOR_AMD) += amd/
 #obj-$(CONFIG_NET_VENDOR_APPLE) += apple/
+#obj-$(CONFIG_NET_VENDOR_ARC) += arc/
 obj-$(CPTCFG_NET_VENDOR_ATHEROS) += atheros/
 #obj-$(CONFIG_NET_CADENCE) += cadence/
 #obj-$(CONFIG_NET_BFIN) += adi/

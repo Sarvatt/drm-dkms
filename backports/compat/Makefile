@@ -35,11 +35,14 @@ compat-$(CPTCFG_BACKPORT_KERNEL_3_7) += compat-3.7.o
 compat-$(CPTCFG_BACKPORT_KERNEL_3_8) += compat-3.8.o
 compat-$(CPTCFG_BACKPORT_KERNEL_3_9) += compat-3.9.o
 compat-$(CPTCFG_BACKPORT_KERNEL_3_10) += backport-3.10.o
+compat-$(CPTCFG_BACKPORT_KERNEL_3_11) += backport-3.11.o
 
 compat-$(CPTCFG_BACKPORT_BUILD_KFIFO) += kfifo.o
 compat-$(CPTCFG_BACKPORT_BUILD_GENERIC_ATOMIC64) += compat_atomic.o
 compat-$(CPTCFG_BACKPORT_BUILD_DMA_SHARED_HELPERS) += dma-shared-helpers.o
 compat-$(CPTCFG_BACKPORT_BUILD_RADIX_HELPERS) += lib-radix-tree-helpers.o
+compat-$(CPTCFG_BACKPORT_BUILD_WW_MUTEX) += kernel/ww_mutex.o
+compat-$(CPTCFG_BACKPORT_BUILD_CROSS_RESERVATION) += drivers-base-reservation.o
 compat-$(CPTCFG_BACKPORT_BUILD_HDMI) += drivers-video-hdmi.o
 compat-$(CPTCFG_BACKPORT_BUILD_AVERAGE) += lib-average.o
 compat-$(CPTCFG_BACKPORT_BUILD_DMA_SHARED_BUFFER) += drivers-base-dma-buf.o

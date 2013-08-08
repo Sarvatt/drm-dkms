@@ -15,7 +15,7 @@
  */
 typedef int (backport_device_find_function_t)(struct device *, void *);
 #define class_find_device(cls, start, idx, fun) \
-	class_find_device((cls), (start), (idx),\
+	class_find_device((cls), (start), (void *)(idx),\
 			  (backport_device_find_function_t *)(fun))
 #endif
 
@@ -175,5 +175,24 @@ static inline void dev_set_uevent_suppress(struct device *dev, int val)
 extern int dev_set_name(struct device *dev, const char *name, ...)
 			__attribute__((format(printf, 2, 3)));
 #endif
+
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3,6,0)
+#define driver_probe_device(__drv, __dev)		\
+({							\
+ 	int ret;					\
+ 	ret = (driver_probe_device)(__drv, __dev);	\
+ 	if (ret)					\
+		dev_set_drvdata(__dev, NULL);		\
+ 	return ret;					\
+})
+
+#define device_release_driver(__dev)			\
+({							\
+ 	(device_release_driver)(__dev);			\
+ 	device_lock(__dev);				\
+ 	dev_set_drvdata(__dev, NULL);			\
+ 	device_unlock(__dev);				\
+})
+#endif /* LINUX_VERSION_CODE <= KERNEL_VERSION(3,6,0) */
 
 #endif /* __BACKPORT_DEVICE_H */

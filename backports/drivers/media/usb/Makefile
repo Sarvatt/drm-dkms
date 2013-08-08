@@ -20,3 +20,4 @@ obj-$(CPTCFG_VIDEO_STK1160) += stk1160/
 obj-$(CPTCFG_VIDEO_CX231XX) += cx231xx/
 obj-$(CPTCFG_VIDEO_TM6000) += tm6000/
 obj-$(CPTCFG_VIDEO_EM28XX) += em28xx/
+obj-$(CPTCFG_VIDEO_USBTV) += usbtv/
