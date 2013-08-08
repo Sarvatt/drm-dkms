@@ -1,2 +1,4 @@
 01-disable-unneeded-drivers.patch
 0001-fix_BACKPORT_BUILD_DMA_SHARED_HELPERS.patch
+0002-enable_BACKPORT_BUILD_WW_MUTEX.patch
+0003-more-kconfig-fixes.patch

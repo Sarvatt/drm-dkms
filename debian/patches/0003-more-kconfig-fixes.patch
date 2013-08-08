@@ -1,0 +1,12 @@
+diff --git a/backports/compat/Kconfig b/backports/compat/Kconfig
+index 8598ff1..3edb830 100644
+--- a/backports/compat/Kconfig
++++ b/backports/compat/Kconfig
+@@ -149,6 +149,7 @@ config BACKPORT_BUILD_CROSS_RESERVATION
+ 	# not possible on kernel < 3.2
+ 	depends on !BACKPORT_KERNEL_3_2
+ 	depends on BACKPORT_BUILD_DMA_SHARED_BUFFER || DMA_SHARED_BUFFER
++	default y if BACKPORT_KERNEL_3_11 && (BACKPORT_BUILD_DMA_SHARED_BUFFER || DMA_SHARED_BUFFER)
+ 	default y if BACKPORT_USERSEL_BUILD_ALL
+ 
+ config BACKPORT_DMA_SHARED_BUFFER

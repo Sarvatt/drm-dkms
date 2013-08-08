@@ -1,0 +1,12 @@
+diff --git a/backports/compat/Kconfig b/backports/compat/Kconfig
+index 8598ff1..1f416c9 100644
+--- a/backports/compat/Kconfig
++++ b/backports/compat/Kconfig
+@@ -202,6 +202,7 @@ config BACKPORT_BUILD_WW_MUTEX
+ 	# Build only if on kernels < 3.11
+ 	# For now only DRM drivers use ww mutexes.
+ 	depends on DRM && BACKPORT_KERNEL_3_11
++	default y if BACKPORT_KERNEL_3_11
+ 	default y if BACKPORT_USERSEL_BUILD_ALL
+ 	# probably a bad idea if you have these options given we
+ 	# ripped those options out.
