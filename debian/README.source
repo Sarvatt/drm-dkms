@@ -2,26 +2,10 @@
 
 Steps needed in order to build a drm backport.
 
-- cd $package_root
-- cp -r $path_to_kernel/drivers/gpu/drm .
-- mkdir include
-- cp -r $path_to_kernel/include/drm include
-- decide which modules you need
-  * modify the patch to the Makefiles for current version
-  * modify debian/dkms.conf.in to suit
-- check the includes from <drm/*.h>, and change them to
-  "*.h"
-
-- build the package
-- install on a chroot of a version where it's going to be used
-  - install the headers first
-- check the build log for errors
-- carefully revert any changes that change the API in ways that
-  prevent the module(s) from loading on the target distro
-- add such changes as quilt patches
-- repeat
-
-- when it builds fine, test installation on a real machine
-- note/hope that there are no unresolved symbols
-
+ - Grab the release you want from http://drvbp1.linux-foundation.org/~mcgrof/rel-html/backports/
+ - rm -r $package_root/backports
+ - extract backport package as $package_root/backports/
+ - Disable unneeded patches in debian/patches
+ - Bump version in debian/changelog
+ - Build and install
 -> profit
