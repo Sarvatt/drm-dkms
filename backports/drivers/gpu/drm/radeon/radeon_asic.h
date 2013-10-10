@@ -405,6 +405,7 @@ int r600_mc_wait_for_idle(struct radeon_device *rdev);
 u32 r600_get_xclk(struct radeon_device *rdev);
 uint64_t r600_get_gpu_clock_counter(struct radeon_device *rdev);
 int rv6xx_get_temp(struct radeon_device *rdev);
+int r600_set_uvd_clocks(struct radeon_device *rdev, u32 vclk, u32 dclk);
 int r600_dpm_pre_set_power_state(struct radeon_device *rdev);
 void r600_dpm_post_set_power_state(struct radeon_device *rdev);
 /* rv6xx dpm */
@@ -441,7 +442,7 @@ void rs780_dpm_debugfs_print_current_performance_level(struct radeon_device *rde
 /* uvd */
 int r600_uvd_init(struct radeon_device *rdev);
 int r600_uvd_rbc_start(struct radeon_device *rdev);
-void r600_uvd_rbc_stop(struct radeon_device *rdev);
+void r600_uvd_stop(struct radeon_device *rdev);
 int r600_uvd_ib_test(struct radeon_device *rdev, struct radeon_ring *ring);
 void r600_uvd_fence_emit(struct radeon_device *rdev,
 			 struct radeon_fence *fence);

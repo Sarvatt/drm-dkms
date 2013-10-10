@@ -497,6 +497,9 @@
 #define DCCG_AUDIO_DTO0_MODULE            0x05b4
 #define DCCG_AUDIO_DTO0_LOAD              0x05b8
 #define DCCG_AUDIO_DTO0_CNTL              0x05bc
+#       define DCCG_AUDIO_DTO_WALLCLOCK_RATIO(x) (((x) & 7) << 0)
+#       define DCCG_AUDIO_DTO_WALLCLOCK_RATIO_MASK 7
+#       define DCCG_AUDIO_DTO_WALLCLOCK_RATIO_SHIFT 0
 
 #define DCCG_AUDIO_DTO1_PHASE             0x05c0
 #define DCCG_AUDIO_DTO1_MODULE            0x05c4
@@ -1149,6 +1152,10 @@
 #define	PIPE0_LATENCY_CONTROL			          0x0bf4
 #       define LATENCY_LOW_WATERMARK(x)                   ((x) << 0)
 #       define LATENCY_HIGH_WATERMARK(x)                  ((x) << 16)
+
+#define	PIPE0_DMIF_BUFFER_CONTROL			  0x0ca0
+#       define DMIF_BUFFERS_ALLOCATED(x)                  ((x) << 0)
+#       define DMIF_BUFFERS_ALLOCATED_COMPLETED           (1 << 4)
 
 #define IH_RB_CNTL                                        0x3e00
 #       define IH_RB_ENABLE                               (1 << 0)

@@ -4735,6 +4735,10 @@ static void i9xx_set_pipeconf(struct intel_crtc *intel_crtc)
 
 	pipeconf = 0;
 
+	if (dev_priv->quirks & QUIRK_PIPEA_FORCE &&
+	    I915_READ(PIPECONF(intel_crtc->pipe)) & PIPECONF_ENABLE)
+		pipeconf |= PIPECONF_ENABLE;
+
 	if (intel_crtc->pipe == 0 && INTEL_INFO(dev)->gen < 4) {
 		/* Enable pixel doubling when the dot clock is > 90% of the (display)
 		 * core speed.
@@ -4836,9 +4840,6 @@ static int i9xx_crtc_mode_set(struct drm_crtc *crtc,
 		DRM_ERROR("Couldn't find PLL settings for mode!\n");
 		return -EINVAL;
 	}
-
-	/* Ensure that the cursor is valid for the new mode before changing... */
-	intel_crtc_update_cursor(crtc, true);
 
 	if (is_lvds && dev_priv->lvds_downclock_avail) {
 		/*
@@ -5688,9 +5689,6 @@ static int ironlake_crtc_mode_set(struct drm_crtc *crtc,
 		intel_crtc->config.dpll.p2 = clock.p2;
 	}
 
-	/* Ensure that the cursor is valid for the new mode before changing... */
-	intel_crtc_update_cursor(crtc, true);
-
 	/* CPU eDP is the only output that doesn't need a PCH PLL of its own. */
 	if (intel_crtc->config.has_pch_encoder) {
 		fp = i9xx_dpll_compute_fp(&intel_crtc->config.dpll);
@@ -5896,9 +5894,6 @@ static int haswell_crtc_mode_set(struct drm_crtc *crtc,
 
 	if (!intel_ddi_pll_mode_set(crtc))
 		return -EINVAL;
-
-	/* Ensure that the cursor is valid for the new mode before changing... */
-	intel_crtc_update_cursor(crtc, true);
 
 	if (intel_crtc->config.has_dp_encoder)
 		intel_dp_set_m_n(intel_crtc);
@@ -6581,7 +6576,8 @@ static int intel_crtc_cursor_set(struct drm_crtc *crtc,
 	intel_crtc->cursor_width = width;
 	intel_crtc->cursor_height = height;
 
-	intel_crtc_update_cursor(crtc, intel_crtc->cursor_bo != NULL);
+	if (intel_crtc->active)
+		intel_crtc_update_cursor(crtc, intel_crtc->cursor_bo != NULL);
 
 	return 0;
 fail_unpin:
@@ -6600,7 +6596,8 @@ static int intel_crtc_cursor_move(struct drm_crtc *crtc, int x, int y)
 	intel_crtc->cursor_x = x;
 	intel_crtc->cursor_y = y;
 
-	intel_crtc_update_cursor(crtc, intel_crtc->cursor_bo != NULL);
+	if (intel_crtc->active)
+		intel_crtc_update_cursor(crtc, intel_crtc->cursor_bo != NULL);
 
 	return 0;
 }
@@ -7809,6 +7806,19 @@ intel_modeset_pipe_config(struct drm_crtc *crtc,
 	pipe_config->cpu_transcoder = to_intel_crtc(crtc)->pipe;
 	pipe_config->shared_dpll = DPLL_ID_PRIVATE;
 
+	/*
+	 * Sanitize sync polarity flags based on requested ones. If neither
+	 * positive or negative polarity is requested, treat this as meaning
+	 * negative polarity.
+	 */
+	if (!(pipe_config->adjusted_mode.flags &
+	      (DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_NHSYNC)))
+		pipe_config->adjusted_mode.flags |= DRM_MODE_FLAG_NHSYNC;
+
+	if (!(pipe_config->adjusted_mode.flags &
+	      (DRM_MODE_FLAG_PVSYNC | DRM_MODE_FLAG_NVSYNC)))
+		pipe_config->adjusted_mode.flags |= DRM_MODE_FLAG_NVSYNC;
+
 	/* Compute a starting value for pipe_config->pipe_bpp taking the source
 	 * plane pixel format and any sink constraints into account. Returns the
 	 * source plane bpp so that dithering can be selected on mismatches
@@ -8269,9 +8279,11 @@ check_crtc_state(struct drm_device *dev)
 
 		list_for_each_entry(encoder, &dev->mode_config.encoder_list,
 				    base.head) {
+			enum pipe pipe;
 			if (encoder->base.crtc != &crtc->base)
 				continue;
-			if (encoder->get_config)
+			if (encoder->get_config &&
+			    encoder->get_hw_state(encoder, &pipe))
 				encoder->get_config(encoder, &pipe_config);
 		}
 
@@ -10040,6 +10052,8 @@ struct intel_display_error_state {
 
 	u32 power_well_driver;
 
+	int num_transcoders;
+
 	struct intel_cursor_error_state {
 		u32 control;
 		u32 position;
@@ -10048,16 +10062,7 @@ struct intel_display_error_state {
 	} cursor[I915_MAX_PIPES];
 
 	struct intel_pipe_error_state {
-		enum transcoder cpu_transcoder;
-		u32 conf;
 		u32 source;
-
-		u32 htotal;
-		u32 hblank;
-		u32 hsync;
-		u32 vtotal;
-		u32 vblank;
-		u32 vsync;
 	} pipe[I915_MAX_PIPES];
 
 	struct intel_plane_error_state {
@@ -10069,6 +10074,19 @@ struct intel_display_error_state {
 		u32 surface;
 		u32 tile_offset;
 	} plane[I915_MAX_PIPES];
+
+	struct intel_transcoder_error_state {
+		enum transcoder cpu_transcoder;
+
+		u32 conf;
+
+		u32 htotal;
+		u32 hblank;
+		u32 hsync;
+		u32 vtotal;
+		u32 vblank;
+		u32 vsync;
+	} transcoder[4];
 };
 
 struct intel_display_error_state *
@@ -10076,8 +10094,16 @@ intel_display_capture_error_state(struct drm_device *dev)
 {
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	struct intel_display_error_state *error;
-	enum transcoder cpu_transcoder;
+	int transcoders[] = {
+		TRANSCODER_A,
+		TRANSCODER_B,
+		TRANSCODER_C,
+		TRANSCODER_EDP,
+	};
 	int i;
+
+	if (INTEL_INFO(dev)->num_pipes == 0)
+		return NULL;
 
 	error = kmalloc(sizeof(*error), GFP_ATOMIC);
 	if (error == NULL)
@@ -10087,9 +10113,6 @@ intel_display_capture_error_state(struct drm_device *dev)
 		error->power_well_driver = I915_READ(HSW_PWR_WELL_DRIVER);
 
 	for_each_pipe(i) {
-		cpu_transcoder = intel_pipe_to_cpu_transcoder(dev_priv, i);
-		error->pipe[i].cpu_transcoder = cpu_transcoder;
-
 		if (INTEL_INFO(dev)->gen <= 6 || IS_VALLEYVIEW(dev)) {
 			error->cursor[i].control = I915_READ(CURCNTR(i));
 			error->cursor[i].position = I915_READ(CURPOS(i));
@@ -10113,14 +10136,25 @@ intel_display_capture_error_state(struct drm_device *dev)
 			error->plane[i].tile_offset = I915_READ(DSPTILEOFF(i));
 		}
 
-		error->pipe[i].conf = I915_READ(PIPECONF(cpu_transcoder));
 		error->pipe[i].source = I915_READ(PIPESRC(i));
-		error->pipe[i].htotal = I915_READ(HTOTAL(cpu_transcoder));
-		error->pipe[i].hblank = I915_READ(HBLANK(cpu_transcoder));
-		error->pipe[i].hsync = I915_READ(HSYNC(cpu_transcoder));
-		error->pipe[i].vtotal = I915_READ(VTOTAL(cpu_transcoder));
-		error->pipe[i].vblank = I915_READ(VBLANK(cpu_transcoder));
-		error->pipe[i].vsync = I915_READ(VSYNC(cpu_transcoder));
+	}
+
+	error->num_transcoders = INTEL_INFO(dev)->num_pipes;
+	if (HAS_DDI(dev_priv->dev))
+		error->num_transcoders++; /* Account for eDP. */
+
+	for (i = 0; i < error->num_transcoders; i++) {
+		enum transcoder cpu_transcoder = transcoders[i];
+
+		error->transcoder[i].cpu_transcoder = cpu_transcoder;
+
+		error->transcoder[i].conf = I915_READ(PIPECONF(cpu_transcoder));
+		error->transcoder[i].htotal = I915_READ(HTOTAL(cpu_transcoder));
+		error->transcoder[i].hblank = I915_READ(HBLANK(cpu_transcoder));
+		error->transcoder[i].hsync = I915_READ(HSYNC(cpu_transcoder));
+		error->transcoder[i].vtotal = I915_READ(VTOTAL(cpu_transcoder));
+		error->transcoder[i].vblank = I915_READ(VBLANK(cpu_transcoder));
+		error->transcoder[i].vsync = I915_READ(VSYNC(cpu_transcoder));
 	}
 
 	/* In the code above we read the registers without checking if the power
@@ -10142,22 +10176,16 @@ intel_display_print_error_state(struct drm_i915_error_state_buf *m,
 {
 	int i;
 
+	if (!error)
+		return;
+
 	err_printf(m, "Num Pipes: %d\n", INTEL_INFO(dev)->num_pipes);
 	if (HAS_POWER_WELL(dev))
 		err_printf(m, "PWR_WELL_CTL2: %08x\n",
 			   error->power_well_driver);
 	for_each_pipe(i) {
 		err_printf(m, "Pipe [%d]:\n", i);
-		err_printf(m, "  CPU transcoder: %c\n",
-			   transcoder_name(error->pipe[i].cpu_transcoder));
-		err_printf(m, "  CONF: %08x\n", error->pipe[i].conf);
 		err_printf(m, "  SRC: %08x\n", error->pipe[i].source);
-		err_printf(m, "  HTOTAL: %08x\n", error->pipe[i].htotal);
-		err_printf(m, "  HBLANK: %08x\n", error->pipe[i].hblank);
-		err_printf(m, "  HSYNC: %08x\n", error->pipe[i].hsync);
-		err_printf(m, "  VTOTAL: %08x\n", error->pipe[i].vtotal);
-		err_printf(m, "  VBLANK: %08x\n", error->pipe[i].vblank);
-		err_printf(m, "  VSYNC: %08x\n", error->pipe[i].vsync);
 
 		err_printf(m, "Plane [%d]:\n", i);
 		err_printf(m, "  CNTR: %08x\n", error->plane[i].control);
@@ -10177,6 +10205,18 @@ intel_display_print_error_state(struct drm_i915_error_state_buf *m,
 		err_printf(m, "  CNTR: %08x\n", error->cursor[i].control);
 		err_printf(m, "  POS: %08x\n", error->cursor[i].position);
 		err_printf(m, "  BASE: %08x\n", error->cursor[i].base);
+	}
+
+	for (i = 0; i < error->num_transcoders; i++) {
+		err_printf(m, "  CPU transcoder: %c\n",
+			   transcoder_name(error->transcoder[i].cpu_transcoder));
+		err_printf(m, "  CONF: %08x\n", error->transcoder[i].conf);
+		err_printf(m, "  HTOTAL: %08x\n", error->transcoder[i].htotal);
+		err_printf(m, "  HBLANK: %08x\n", error->transcoder[i].hblank);
+		err_printf(m, "  HSYNC: %08x\n", error->transcoder[i].hsync);
+		err_printf(m, "  VTOTAL: %08x\n", error->transcoder[i].vtotal);
+		err_printf(m, "  VBLANK: %08x\n", error->transcoder[i].vblank);
+		err_printf(m, "  VSYNC: %08x\n", error->transcoder[i].vsync);
 	}
 }
 #endif

@@ -2147,12 +2147,16 @@ static void rv7xx_parse_pplib_non_clock_info(struct radeon_device *rdev,
 	if (ATOM_PPLIB_NONCLOCKINFO_VER1 < table_rev) {
 		rps->vclk = le32_to_cpu(non_clock_info->ulVCLK);
 		rps->dclk = le32_to_cpu(non_clock_info->ulDCLK);
-	} else if (r600_is_uvd_state(rps->class, rps->class2)) {
-		rps->vclk = RV770_DEFAULT_VCLK_FREQ;
-		rps->dclk = RV770_DEFAULT_DCLK_FREQ;
 	} else {
 		rps->vclk = 0;
 		rps->dclk = 0;
+	}
+
+	if (r600_is_uvd_state(rps->class, rps->class2)) {
+		if ((rps->vclk == 0) || (rps->dclk == 0)) {
+			rps->vclk = RV770_DEFAULT_VCLK_FREQ;
+			rps->dclk = RV770_DEFAULT_DCLK_FREQ;
+		}
 	}
 
 	if (rps->class & ATOM_PPLIB_CLASSIFICATION_BOOT)
@@ -2319,12 +2323,25 @@ int rv7xx_parse_power_table(struct radeon_device *rdev)
 	return 0;
 }
 
+void rv770_get_engine_memory_ss(struct radeon_device *rdev)
+{
+	struct rv7xx_power_info *pi = rv770_get_pi(rdev);
+	struct radeon_atom_ss ss;
+
+	pi->sclk_ss = radeon_atombios_get_asic_ss_info(rdev, &ss,
+						       ASIC_INTERNAL_ENGINE_SS, 0);
+	pi->mclk_ss = radeon_atombios_get_asic_ss_info(rdev, &ss,
+						       ASIC_INTERNAL_MEMORY_SS, 0);
+
+	if (pi->sclk_ss || pi->mclk_ss)
+		pi->dynamic_ss = true;
+	else
+		pi->dynamic_ss = false;
+}
+
 int rv770_dpm_init(struct radeon_device *rdev)
 {
 	struct rv7xx_power_info *pi;
-	int index = GetIndexIntoMasterTable(DATA, ASIC_InternalSS_Info);
-	uint16_t data_offset, size;
-	uint8_t frev, crev;
 	struct atom_clock_dividers dividers;
 	int ret;
 
@@ -2369,16 +2386,7 @@ int rv770_dpm_init(struct radeon_device *rdev)
 	pi->mvdd_control =
 		radeon_atom_is_voltage_gpio(rdev, SET_VOLTAGE_TYPE_ASIC_MVDDC, 0);
 
-	if (atom_parse_data_header(rdev->mode_info.atom_context, index, &size,
-                                   &frev, &crev, &data_offset)) {
-		pi->sclk_ss = true;
-		pi->mclk_ss = true;
-		pi->dynamic_ss = true;
-	} else {
-		pi->sclk_ss = false;
-		pi->mclk_ss = false;
-		pi->dynamic_ss = false;
-	}
+	rv770_get_engine_memory_ss(rdev);
 
 	pi->asi = RV770_ASI_DFLT;
 	pi->pasi = RV770_HASI_DFLT;
@@ -2393,8 +2401,7 @@ int rv770_dpm_init(struct radeon_device *rdev)
 
 	pi->dynamic_pcie_gen2 = true;
 
-	if (pi->gfx_clock_gating &&
-	    (rdev->pm.int_thermal_type != THERMAL_TYPE_NONE))
+	if (rdev->pm.int_thermal_type != THERMAL_TYPE_NONE)
 		pi->thermal_protection = true;
 	else
 		pi->thermal_protection = false;
@@ -2514,8 +2521,16 @@ u32 rv770_dpm_get_mclk(struct radeon_device *rdev, bool low)
 bool rv770_dpm_vblank_too_short(struct radeon_device *rdev)
 {
 	u32 vblank_time = r600_dpm_get_vblank_time(rdev);
+	u32 switch_limit = 300;
 
-	if (vblank_time < 300)
+	/* quirks */
+	/* ASUS K70AF */
+	if ((rdev->pdev->device == 0x9553) &&
+	    (rdev->pdev->subsystem_vendor == 0x1043) &&
+	    (rdev->pdev->subsystem_device == 0x1c42))
+		switch_limit = 200;
+
+	if (vblank_time < switch_limit)
 		return true;
 	else
 		return false;

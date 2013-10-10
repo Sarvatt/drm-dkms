@@ -919,7 +919,7 @@ static void radeon_pm_resume_old(struct radeon_device *rdev)
 {
 	/* set up the default clocks if the MC ucode is loaded */
 	if ((rdev->family >= CHIP_BARTS) &&
-	    (rdev->family <= CHIP_HAINAN) &&
+	    (rdev->family <= CHIP_CAYMAN) &&
 	    rdev->mc_fw) {
 		if (rdev->pm.default_vddc)
 			radeon_atom_set_voltage(rdev, rdev->pm.default_vddc,
@@ -963,7 +963,7 @@ static void radeon_pm_resume_dpm(struct radeon_device *rdev)
 	if (ret) {
 		DRM_ERROR("radeon: dpm resume failed\n");
 		if ((rdev->family >= CHIP_BARTS) &&
-		    (rdev->family <= CHIP_HAINAN) &&
+		    (rdev->family <= CHIP_CAYMAN) &&
 		    rdev->mc_fw) {
 			if (rdev->pm.default_vddc)
 				radeon_atom_set_voltage(rdev, rdev->pm.default_vddc,
@@ -1014,7 +1014,7 @@ static int radeon_pm_init_old(struct radeon_device *rdev)
 		radeon_pm_init_profile(rdev);
 		/* set up the default clocks if the MC ucode is loaded */
 		if ((rdev->family >= CHIP_BARTS) &&
-		    (rdev->family <= CHIP_HAINAN) &&
+		    (rdev->family <= CHIP_CAYMAN) &&
 		    rdev->mc_fw) {
 			if (rdev->pm.default_vddc)
 				radeon_atom_set_voltage(rdev, rdev->pm.default_vddc,
@@ -1099,7 +1099,7 @@ static int radeon_pm_init_dpm(struct radeon_device *rdev)
 	if (ret) {
 		rdev->pm.dpm_enabled = false;
 		if ((rdev->family >= CHIP_BARTS) &&
-		    (rdev->family <= CHIP_HAINAN) &&
+		    (rdev->family <= CHIP_CAYMAN) &&
 		    rdev->mc_fw) {
 			if (rdev->pm.default_vddc)
 				radeon_atom_set_voltage(rdev, rdev->pm.default_vddc,
@@ -1176,7 +1176,14 @@ int radeon_pm_init(struct radeon_device *rdev)
 	case CHIP_VERDE:
 	case CHIP_OLAND:
 	case CHIP_HAINAN:
-		if (radeon_dpm == 1)
+		/* DPM requires the RLC, RV770+ dGPU requires SMC */
+		if (!rdev->rlc_fw)
+			rdev->pm.pm_method = PM_METHOD_PROFILE;
+		else if ((rdev->family >= CHIP_RV770) &&
+			 (!(rdev->flags & RADEON_IS_IGP)) &&
+			 (!rdev->smc_fw))
+			rdev->pm.pm_method = PM_METHOD_PROFILE;
+		else if (radeon_dpm == 1)
 			rdev->pm.pm_method = PM_METHOD_DPM;
 		else
 			rdev->pm.pm_method = PM_METHOD_PROFILE;

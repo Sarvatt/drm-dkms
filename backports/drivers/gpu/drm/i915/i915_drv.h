@@ -1091,6 +1091,13 @@ typedef struct drm_i915_private {
 
 	unsigned int fsb_freq, mem_freq, is_ddr3;
 
+	/**
+	 * wq - Driver workqueue for GEM.
+	 *
+	 * NOTE: Work items scheduled here are not allowed to grab any modeset
+	 * locks, for otherwise the flushing done in the pageflip code will
+	 * result in deadlocks.
+	 */
 	struct workqueue_struct *wq;
 
 	/* Display functions */
@@ -1582,6 +1589,7 @@ void i915_hangcheck_elapsed(unsigned long data);
 void i915_handle_error(struct drm_device *dev, bool wedged);
 
 extern void intel_irq_init(struct drm_device *dev);
+extern void intel_pm_init(struct drm_device *dev);
 extern void intel_hpd_init(struct drm_device *dev);
 extern void intel_gt_init(struct drm_device *dev);
 extern void intel_gt_sanitize(struct drm_device *dev);
