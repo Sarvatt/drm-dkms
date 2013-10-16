@@ -821,6 +821,9 @@ static int i915_gmch_probe(struct drm_device *dev,
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	int ret;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,9,0))
+	const struct intel_gtt *gtt;
+#endif
 
 	ret = intel_gmch_probe(dev_priv->bridge_dev, dev_priv->dev->pdev, NULL);
 	if (!ret) {
@@ -828,7 +831,16 @@ static int i915_gmch_probe(struct drm_device *dev,
 		return -EIO;
 	}
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
 	intel_gtt_get(gtt_total, stolen, mappable_base, mappable_end);
+#else
+	gtt = intel_gtt_get();
+
+	*gtt_total = gtt->gtt_total_entries << PAGE_SHIFT;
+	*stolen = gtt->stolen_size;
+	*mappable_base = gtt->gma_bus_addr;
+	*mappable_end = gtt->gtt_mappable_entries << PAGE_SHIFT;
+#endif
 
 	dev_priv->gtt.do_idle_maps = needs_idle_maps(dev_priv->dev);
 	dev_priv->gtt.gtt_clear_range = i915_ggtt_clear_range;

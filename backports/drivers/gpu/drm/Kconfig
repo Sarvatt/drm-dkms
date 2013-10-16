@@ -133,6 +133,7 @@ config DRM_I810
 	  for this driver to work.
 
 config DRM_I915
+	depends on !BACKPORT_KERNEL_3_5
 	tristate "Intel 8xx/9xx/G3x/G4x/HD Graphics"
 	depends on m
 	depends on DRM

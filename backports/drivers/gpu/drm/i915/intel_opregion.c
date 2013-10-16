@@ -250,9 +250,6 @@ static int intel_opregion_video_event(struct notifier_block *nb,
 	struct acpi_bus_event *event = data;
 	int ret = NOTIFY_OK;
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,1,0))
-#define ACPI_VIDEO_CLASS "video"
-#endif
 	if (strcmp(event->device_class, ACPI_VIDEO_CLASS) != 0)
 		return NOTIFY_DONE;
 

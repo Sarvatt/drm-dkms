@@ -1290,17 +1290,10 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 		drm_gem_object_unreference_unlocked(obj);
 		return -EINVAL;
 	}
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,0))
-	down_write(&current->mm->mmap_sem);
-	addr = do_mmap(obj->filp, 0, args->size,
-		       PROT_READ | PROT_WRITE, MAP_SHARED,
-		       args->offset);
-	up_write(&current->mm->mmap_sem);
-#else
+
 	addr = vm_mmap(obj->filp, 0, args->size,
 		       PROT_READ | PROT_WRITE, MAP_SHARED,
 		       args->offset);
-#endif
 	drm_gem_object_unreference_unlocked(obj);
 	if (IS_ERR((void *)addr))
 		return addr;
@@ -1614,13 +1607,7 @@ i915_gem_object_truncate(struct drm_i915_gem_object *obj)
 	 * backing pages, *now*.
 	 */
 	inode = file_inode(obj->base.filp);
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,0))
 	shmem_truncate_range(inode, 0, (loff_t)-1);
-#else
-	truncate_inode_pages(inode->i_mapping, 0);
-	if (inode->i_op->truncate_range)
-		inode->i_op->truncate_range(inode, 0, (loff_t)-1);
-#endif
 
 	obj->madv = __I915_MADV_PURGED;
 }
@@ -4160,13 +4147,8 @@ i915_gem_init_hw(struct drm_device *dev)
 	drm_i915_private_t *dev_priv = dev->dev_private;
 	int ret;
 
-	if (INTEL_INFO(dev)->gen < 6)
+	if (INTEL_INFO(dev)->gen < 6 && !intel_enable_gtt())
 		return -EIO;
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
-	if (!intel_enable_gtt())
-		return -EIO;
-#endif
 
 	if (IS_HASWELL(dev) && (I915_READ(0x120010) == 1))
 		I915_WRITE(0x9008, I915_READ(0x9008) | 0xf0000);
