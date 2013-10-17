@@ -3,7 +3,7 @@ PACKAGE_VERSION="#VERSION#"
 # We don't want DKMS to modify our command line by adding
 # KERNELRELEASE=blah, because that breaks module building:
 # http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=553625
-MAKE="'make' -C backports defconfig-drm && 'make' -j4 -C backports KLIB=/lib/modules/${kernelver}"
+MAKE="'make' -C backports defconfig-drm KLIB=/lib/modules/${kernelver} && 'make' -j4 -C backports KLIB=/lib/modules/${kernelver}"
 CLEAN="'make' -C backports clean"
 BUILT_MODULE_NAME[0]="compat"
 BUILT_MODULE_LOCATION[0]="backports/compat"
