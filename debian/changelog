@@ -1,6 +1,6 @@
-drm-dkms (3.11.5~hwe1) UNRELEASED; urgency=medium
+drm-dkms (3.11.6~hwe1) precise; urgency=medium
 
   * Switch drm-dkms to use https://backports.wiki.kernel.org backports package.
-  * Refresh backports package against 3.11.5
+  * Refresh backports package against 3.11.6
 
  -- Robert Hooker <sarvatt@ubuntu.com>  Thu, 08 Aug 2013 14:54:36 -0400
