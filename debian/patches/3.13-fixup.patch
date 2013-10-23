@@ -1,0 +1,140 @@
+diff --git a/backports/backport-include/linux/vga_switcheroo.h b/backports/backport-include/linux/vga_switcheroo.h
+index 698f3f7..f56c5cb 100644
+--- a/backports/backport-include/linux/vga_switcheroo.h
++++ b/backports/backport-include/linux/vga_switcheroo.h
+@@ -34,10 +34,19 @@ static inline int compat_vga_switcheroo_register_client(struct pci_dev *dev,
+ 					      ops->can_switch);
+ }
+ 
+-#define vga_switcheroo_register_client(_dev, _ops) \
++#define vga_switcheroo_register_client(_dev, _ops, runtime) \
+ 	compat_vga_switcheroo_register_client(_dev, _ops)
+ 
+ #endif /* < 3.5 */
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3,12,0)
++# define vga_switcheroo_init_domain_pm_ops(dev, domain) do { } while (0)
++# define vga_switcheroo_set_dynamic_switch(dev, sw) do { } while (0)
++
++# ifndef vga_switcheroo_register_client
++#  define vga_switcheroo_register_client(dev, ops, runtime) vga_switcheroo_register_client(dev, ops)
++# endif
++#endif /* < 3.12 */
++
+ #endif /* >= 2.6.34 */
+ #endif /* __BACKPORT_VGA_SWITCHEROO_H */
+diff --git a/backports/backport-include/linux/wait.h b/backports/backport-include/linux/wait.h
+index 7ada8bc..a258109 100644
+--- a/backports/backport-include/linux/wait.h
++++ b/backports/backport-include/linux/wait.h
+@@ -21,4 +21,38 @@ extern void compat_wake_up_locked(wait_queue_head_t *q, unsigned int mode, int n
+ 	__wake_up(x, TASK_INTERRUPTIBLE, 1, (void *) (m))
+ #endif
+ 
++#ifndef wait_event_interruptible_lock_irq
++#define __wait_event_interruptible_lock_irq(wq, condition,		\
++					    lock, ret, cmd)		\
++do {									\
++	DEFINE_WAIT(__wait);						\
++									\
++	for (;;) {							\
++		prepare_to_wait(&wq, &__wait, TASK_INTERRUPTIBLE);	\
++		if (condition)						\
++			break;						\
++		if (signal_pending(current)) {				\
++			ret = -ERESTARTSYS;				\
++			break;						\
++		}							\
++		spin_unlock_irq(&lock);					\
++		cmd;							\
++		schedule();						\
++		spin_lock_irq(&lock);					\
++	}								\
++	finish_wait(&wq, &__wait);					\
++} while (0)
++
++#define wait_event_interruptible_lock_irq(wq, condition, lock)		\
++({									\
++	int __ret = 0;							\
++									\
++	if (!(condition))						\
++		__wait_event_interruptible_lock_irq(wq, condition,	\
++						    lock, __ret, );	\
++	__ret;								\
++})
++
++#endif
++
+ #endif /* __BACKPORT_LINUX_WAIT_H */
+diff --git a/backports/drivers/gpu/drm/i915/i915_debugfs.c b/backports/drivers/gpu/drm/i915/i915_debugfs.c
+index b67e70d..244f07f 100644
+--- a/backports/drivers/gpu/drm/i915/i915_debugfs.c
++++ b/backports/drivers/gpu/drm/i915/i915_debugfs.c
+@@ -1736,6 +1736,7 @@ static int i915_energy_uJ(struct seq_file *m, void *data)
+ 
+ 	return 0;
+ }
++#endif
+ 
+ static int i915_pc8_status(struct seq_file *m, void *unused)
+ {
+@@ -2236,7 +2237,6 @@ static int display_crc_ctl_parse_pipe(const char *buf, enum pipe *pipe)
+ 
+ 	return 0;
+ }
+-#endif
+ 
+ static int
+ display_crc_ctl_parse_source(const char *buf, enum intel_pipe_crc_source *s)
+diff --git a/backports/drivers/gpu/drm/i915/i915_gem.c b/backports/drivers/gpu/drm/i915/i915_gem.c
+index d76587d..a839b62 100644
+--- a/backports/drivers/gpu/drm/i915/i915_gem.c
++++ b/backports/drivers/gpu/drm/i915/i915_gem.c
+@@ -5081,6 +5081,7 @@ i915_gem_inactive_scan(struct shrinker *shrinker, struct shrink_control *sc)
+ 
+ 	return freed;
+ }
++#endif
+ 
+ struct i915_vma *i915_gem_obj_to_ggtt(struct drm_i915_gem_object *obj)
+ {
+@@ -5095,4 +5096,3 @@ struct i915_vma *i915_gem_obj_to_ggtt(struct drm_i915_gem_object *obj)
+ 
+ 	return vma;
+ }
+-#endif
+diff --git a/backports/drivers/gpu/drm/i915/intel_fbdev.c b/backports/drivers/gpu/drm/i915/intel_fbdev.c
+index 895fcb4..56a3ae8 100644
+--- a/backports/drivers/gpu/drm/i915/intel_fbdev.c
++++ b/backports/drivers/gpu/drm/i915/intel_fbdev.c
+@@ -151,8 +151,10 @@ static int intelfb_create(struct drm_fb_helper *helper,
+ 	}
+ 	info->screen_size = size;
+ 
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0)
+ 	/* This driver doesn't need a VT switch to restore the mode on resume */
+ 	info->skip_vt_switch = true;
++#endif
+ 
+ 	drm_fb_helper_fill_fix(info, fb->pitches[0], fb->depth);
+ 	drm_fb_helper_fill_var(info, &ifbdev->helper, sizes->fb_width, sizes->fb_height);
+diff --git a/backports/drivers/gpu/drm/nouveau/nouveau_drm.c b/backports/drivers/gpu/drm/nouveau/nouveau_drm.c
+index 428d818..4646c82 100644
+--- a/backports/drivers/gpu/drm/nouveau/nouveau_drm.c
++++ b/backports/drivers/gpu/drm/nouveau/nouveau_drm.c
+@@ -72,10 +72,13 @@ MODULE_PARM_DESC(modeset, "enable driver (default: auto, "
+ int nouveau_modeset = -1;
+ module_param_named(modeset, nouveau_modeset, int, 0400);
+ 
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,12,0)
+ MODULE_PARM_DESC(runpm, "disable (0), force enable (1), optimus only default (-1)");
+ int nouveau_runtime_pm = -1;
+ module_param_named(runpm, nouveau_runtime_pm, int, 0400);
+-
++#else
++int nouveau_runtime_pm = 0;
++#endif
+ static struct drm_driver driver;
+ 
+ static int
+
