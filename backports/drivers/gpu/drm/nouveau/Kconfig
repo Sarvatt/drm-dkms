@@ -4,6 +4,7 @@ config DRM_NOUVEAU
 	depends on DRM && PCI
         select BACKPORT_FW_LOADER
 	select DRM_KMS_HELPER
+	select DRM_KMS_FB_HELPER
 	select DRM_TTM
 	depends on FB_CFB_FILLRECT
 	depends on FB_CFB_COPYAREA

@@ -127,6 +127,10 @@ void *wil_if_alloc(struct device *dev, void __iomem *csr)
 
 	netdev_attach_ops(ndev, &wil_netdev_ops);
 	ndev->ieee80211_ptr = wdev;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,39))
+	ndev->hw_features = NETIF_F_HW_CSUM | NETIF_F_RXCSUM;
+#endif
+	ndev->features |= NETIF_F_HW_CSUM | NETIF_F_RXCSUM;
 	SET_NETDEV_DEV(ndev, wiphy_dev(wdev->wiphy));
 	wdev->netdev = ndev;
 

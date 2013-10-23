@@ -19,13 +19,14 @@ typedef int (backport_device_find_function_t)(struct device *, void *);
 			  (backport_device_find_function_t *)(fun))
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,25)
-#define dev_emerg(dev, format, arg...)          \
-	dev_printk(KERN_EMERG , dev , format , ## arg)
-#define dev_alert(dev, format, arg...)          \
-	dev_printk(KERN_ALERT , dev , format , ## arg)
-#define dev_crit(dev, format, arg...)           \
-	dev_printk(KERN_CRIT , dev , format , ## arg)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,30)
+static inline int
+backport_device_move(struct device *dev, struct device *new_parent,
+		     enum dpm_order dpm_order)
+{
+	return device_move(dev, new_parent);
+}
+#define device_move LINUX_BACKPORT(device_move)
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0)
@@ -177,22 +178,42 @@ extern int dev_set_name(struct device *dev, const char *name, ...)
 #endif
 
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3,6,0)
-#define driver_probe_device(__drv, __dev)		\
-({							\
- 	int ret;					\
- 	ret = (driver_probe_device)(__drv, __dev);	\
- 	if (ret)					\
-		dev_set_drvdata(__dev, NULL);		\
- 	return ret;					\
-})
-
-#define device_release_driver(__dev)			\
-({							\
- 	(device_release_driver)(__dev);			\
- 	device_lock(__dev);				\
- 	dev_set_drvdata(__dev, NULL);			\
- 	device_unlock(__dev);				\
-})
+static inline void
+backport_device_release_driver(struct device *dev)
+{
+	device_release_driver(dev);
+	device_lock(dev);
+	dev_set_drvdata(dev, NULL);
+	device_unlock(dev);
+}
+#define device_release_driver LINUX_BACKPORT(device_release_driver)
 #endif /* LINUX_VERSION_CODE <= KERNEL_VERSION(3,6,0) */
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,11,0)
+#define DEVICE_ATTR_RO(_name) \
+struct device_attribute dev_attr_ ## _name = __ATTR_RO(_name);
+#define DEVICE_ATTR_RW(_name) \
+struct device_attribute dev_attr_ ## _name = __ATTR_RW(_name)
+
+#define ATTRIBUTE_GROUPS(_name) \
+static struct BP_ATTR_GRP_STRUCT _name##_dev_attrs[ARRAY_SIZE(_name##_attrs)];\
+static void init_##_name##_attrs(void)				\
+{									\
+	int i;								\
+	for (i = 0; _name##_attrs[i]; i++)				\
+		_name##_dev_attrs[i] =				\
+			*container_of(_name##_attrs[i],		\
+				      struct BP_ATTR_GRP_STRUCT,	\
+				      attr);				\
+}
+#else
+#undef ATTRIBUTE_GROUPS
+#define ATTRIBUTE_GROUPS(_name)					\
+static const struct attribute_group _name##_group = {		\
+	.attrs = _name##_attrs,					\
+};								\
+static inline void init_##_name##_attrs(void) {}		\
+__ATTRIBUTE_GROUPS(_name)
+#endif
 
 #endif /* __BACKPORT_DEVICE_H */

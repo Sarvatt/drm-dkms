@@ -3,6 +3,7 @@ config DRM_TILCDC
 	depends on m
 	depends on DRM && OF && ARM
 	select DRM_KMS_HELPER
+	select DRM_KMS_FB_HELPER
 	select DRM_KMS_CMA_HELPER
 	select DRM_GEM_CMA_HELPER
 	depends on VIDEOMODE_HELPERS

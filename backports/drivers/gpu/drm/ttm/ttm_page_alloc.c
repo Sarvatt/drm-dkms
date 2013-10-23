@@ -377,28 +377,34 @@ out:
 	return nr_free;
 }
 
-/* Get good estimation how many pages are free in pools */
-static int ttm_pool_get_num_unused_pages(void)
-{
-	unsigned i;
-	int total = 0;
-	for (i = 0; i < NUM_POOLS; ++i)
-		total += _manager->pools[i].npages;
-
-	return total;
-}
+static unsigned long
+ttm_pool_shrink_count(struct shrinker *shrink, struct shrink_control *sc);
 
 /**
  * Callback for mm to request pool to reduce number of page held.
+ *
+ * XXX: (dchinner) Deadlock warning!
+ *
+ * ttm_page_pool_free() does memory allocation using GFP_KERNEL.  that means
+ * this can deadlock when called a sc->gfp_mask that is not equal to
+ * GFP_KERNEL.
+ *
+ * This code is crying out for a shrinker per pool....
  */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,12,0))
+static unsigned long
+ttm_pool_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
+#else
 static int ttm_pool_mm_shrink(struct shrinker *shrink,
 			      struct shrink_control *sc)
+#endif
 {
 	static atomic_t start_pool = ATOMIC_INIT(0);
 	unsigned i;
 	unsigned pool_offset = atomic_add_return(1, &start_pool);
 	struct ttm_page_pool *pool;
 	int shrink_pages = sc->nr_to_scan;
+	unsigned long freed = 0;
 
 	pool_offset = pool_offset % NUM_POOLS;
 	/* select start pool in round robin fashion */
@@ -408,14 +414,37 @@ static int ttm_pool_mm_shrink(struct shrinker *shrink,
 			break;
 		pool = &_manager->pools[(i + pool_offset)%NUM_POOLS];
 		shrink_pages = ttm_page_pool_free(pool, nr_free);
+		freed += nr_free - shrink_pages;
 	}
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,12,0))
+	return freed;
+#else
 	/* return estimated number of unused pages in pool */
-	return ttm_pool_get_num_unused_pages();
+	return ttm_pool_shrink_count(shrink, sc);
+#endif
+}
+
+
+static unsigned long
+ttm_pool_shrink_count(struct shrinker *shrink, struct shrink_control *sc)
+{
+	unsigned i;
+	unsigned long count = 0;
+
+	for (i = 0; i < NUM_POOLS; ++i)
+		count += _manager->pools[i].npages;
+
+	return count;
 }
 
 static void ttm_pool_mm_shrink_init(struct ttm_pool_manager *manager)
 {
-	manager->mm_shrink.shrink = &ttm_pool_mm_shrink;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,12,0))
+	manager->mm_shrink.count_objects = ttm_pool_shrink_count;
+	manager->mm_shrink.scan_objects = ttm_pool_shrink_scan;
+#else
+	manager->mm_shrink.shrink = ttm_pool_mm_shrink;
+#endif
 	manager->mm_shrink.seeks = 1;
 	register_shrinker(&manager->mm_shrink);
 }

@@ -812,6 +812,7 @@ config SAMSUNG_LAPTOP
 	depends on m
 	depends on X86
 	depends on RFKILL || RFKILL = n
+	depends on ACPI_VIDEO || ACPI_VIDEO = n
 	depends on BACKLIGHT_CLASS_DEVICE
 	select BACKPORT_LEDS_CLASS
 	select BACKPORT_NEW_LEDS
@@ -850,7 +851,7 @@ config SAMSUNG_Q10
 	depends on n
 	tristate "Samsung Q10 Extras"
 	depends on m
-	depends on SERIO_I8042
+	depends on ACPI
 	depends on BACKLIGHT_CLASS_DEVICE
 	---help---
 	  This driver provides support for backlight control on Samsung Q10

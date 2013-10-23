@@ -14,7 +14,11 @@
 #define hdmi_audio_infoframe_init LINUX_BACKPORT(hdmi_audio_infoframe_init)
 #undef hdmi_audio_infoframe_pack
 #define hdmi_audio_infoframe_pack LINUX_BACKPORT(hdmi_audio_infoframe_pack)
+#undef hdmi_vendor_infoframe_init
+#define hdmi_vendor_infoframe_init LINUX_BACKPORT(hdmi_vendor_infoframe_init)
 #undef hdmi_vendor_infoframe_pack
 #define hdmi_vendor_infoframe_pack LINUX_BACKPORT(hdmi_vendor_infoframe_pack)
+#undef hdmi_infoframe_pack
+#define hdmi_infoframe_pack LINUX_BACKPORT(hdmi_infoframe_pack)
 #include <linux/backport-hdmi.h>
 #endif /* CPTCFG_BACKPORT_BUILD_HDMI */

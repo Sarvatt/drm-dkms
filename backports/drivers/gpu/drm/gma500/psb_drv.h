@@ -27,6 +27,7 @@
 #include <drm/gma_drm.h>
 #include "psb_reg.h"
 #include "psb_intel_drv.h"
+#include "gma_display.h"
 #include "intel_bios.h"
 #include "gtt.h"
 #include "power.h"
@@ -43,9 +44,10 @@ enum {
 	CHIP_MFLD_0130 = 3,		/* Medfield */
 };
 
-#define IS_PSB(dev) (((dev)->pci_device & 0xfffe) == 0x8108)
-#define IS_MRST(dev) (((dev)->pci_device & 0xfffc) == 0x4100)
-#define IS_MFLD(dev) (((dev)->pci_device & 0xfff8) == 0x0130)
+#define IS_PSB(dev) (((dev)->pdev->device & 0xfffe) == 0x8108)
+#define IS_MRST(dev) (((dev)->pdev->device & 0xfffc) == 0x4100)
+#define IS_MFLD(dev) (((dev)->pdev->device & 0xfff8) == 0x0130)
+#define IS_CDV(dev) (((dev)->pdev->device & 0xfff0) == 0x0be0)
 
 /*
  * Driver definitions
@@ -675,6 +677,7 @@ struct psb_ops {
 	/* Sub functions */
 	struct drm_crtc_helper_funcs const *crtc_helper;
 	struct drm_crtc_funcs const *crtc_funcs;
+	const struct gma_clock_funcs *clock_funcs;
 
 	/* Setup hooks */
 	int (*chip_setup)(struct drm_device *dev);
@@ -692,6 +695,8 @@ struct psb_ops {
 	int (*restore_regs)(struct drm_device *dev);
 	int (*power_up)(struct drm_device *dev);
 	int (*power_down)(struct drm_device *dev);
+	void (*update_wm)(struct drm_device *dev, struct drm_crtc *crtc);
+	void (*disable_sr)(struct drm_device *dev);
 
 	void (*lvds_bl_power)(struct drm_device *dev, bool on);
 #ifdef CONFIG_BACKLIGHT_CLASS_DEVICE
@@ -832,14 +837,11 @@ extern const struct drm_connector_helper_funcs
 extern const struct drm_connector_funcs psb_intel_lvds_connector_funcs;
 
 /* gem.c */
-extern int psb_gem_init_object(struct drm_gem_object *obj);
 extern void psb_gem_free_object(struct drm_gem_object *obj);
 extern int psb_gem_get_aperture(struct drm_device *dev, void *data,
 			struct drm_file *file);
 extern int psb_gem_dumb_create(struct drm_file *file, struct drm_device *dev,
 			struct drm_mode_create_dumb *args);
-extern int psb_gem_dumb_destroy(struct drm_file *file, struct drm_device *dev,
-			uint32_t handle);
 extern int psb_gem_dumb_map_gtt(struct drm_file *file, struct drm_device *dev,
 			uint32_t handle, uint64_t *offset);
 extern int psb_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf);

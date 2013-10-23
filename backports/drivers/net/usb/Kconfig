@@ -243,7 +243,6 @@ config USB_NET_CDC_EEM
 	  name is used instead.
 
 config USB_NET_CDC_NCM
-	depends on n
 	tristate "CDC NCM support"
 	depends on m
 	depends on USB_USBNET
@@ -264,11 +263,10 @@ config USB_NET_CDC_NCM
 	    * Ericsson F5521gw Mobile Broadband Module
 
 config USB_NET_CDC_MBIM
-	depends on n
 	tristate "CDC MBIM support"
 	depends on m
 	depends on USB_USBNET
-	depends on USB_WDM
+	select USB_WDM
 	select USB_NET_CDC_NCM
 	help
 	  This driver provides support for CDC MBIM (Mobile Broadband
@@ -291,6 +289,16 @@ config USB_NET_DM9601
 	depends on CRC32
 	help
 	  This option adds support for Davicom DM9601 based USB 1.1
+	  10/100 Ethernet adapters.
+
+config USB_NET_SR9700
+	depends on n
+	tristate "CoreChip-sz SR9700 based USB 1.1 10/100 ethernet devices"
+	depends on m
+	depends on USB_USBNET
+	depends on CRC32
+	help
+	  This option adds support for CoreChip-sz SR9700 based USB 1.1
 	  10/100 Ethernet adapters.
 
 config USB_NET_SMSC75XX
@@ -491,11 +499,10 @@ config USB_NET_KALMIA
 	  module will be called kalmia.
 
 config USB_NET_QMI_WWAN
-	depends on n
 	tristate "QMI WWAN driver for Qualcomm MSM based 3G and LTE modems"
 	depends on m
 	depends on USB_USBNET
-	depends on USB_WDM
+	select USB_WDM
 	help
 	  Support WWAN LTE/3G devices based on Qualcomm Mobile Data Modem
 	  (MDM) chipsets.  Examples of such devices are
@@ -562,7 +569,6 @@ config USB_IPHETH
 	  For more information: http://giagio.com/wiki/moin.cgi/iPhoneEthernetDriver
 
 config USB_SIERRA_NET
-	depends on n
 	tristate "USB-to-WWAN Driver for Sierra Wireless modems"
 	depends on m
 	depends on USB_USBNET
@@ -577,7 +583,7 @@ config USB_VL600
 	tristate "LG VL600 modem dongle"
 	depends on m
 	depends on USB_NET_CDCETHER && TTY
-	depends on USB_ACM
+	select USB_ACM
 	help
 	  Select this if you want to use an LG Electronics 4G/LTE usb modem
 	  called VL600.  This driver only handles the ethernet

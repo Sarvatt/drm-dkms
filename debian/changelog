@@ -1,6 +1,7 @@
-drm-dkms (3.11.6~hwe1) precise; urgency=medium
+drm-dkms (3.12.0~hwe1~20131022) precise; urgency=medium
 
   * Switch drm-dkms to use https://backports.wiki.kernel.org backports package.
-  * Refresh backports package against 3.11.6
+  * Refresh backports package against drm-intel-nightly 20131022
 
  -- Robert Hooker <sarvatt@ubuntu.com>  Thu, 08 Aug 2013 14:54:36 -0400
+

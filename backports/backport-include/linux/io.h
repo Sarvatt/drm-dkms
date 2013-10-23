@@ -14,6 +14,10 @@
  * to have no effect.
  */
 #ifndef arch_phys_wc_add
+
+#define arch_phys_wc_add LINUX_BACKPORT(arch_phys_wc_add)
+#define arch_phys_wc_del LINUX_BACKPORT(arch_phys_wc_del)
+
 #ifdef CONFIG_MTRR
 extern int __must_check arch_phys_wc_add(unsigned long base,
 					 unsigned long size);
@@ -29,8 +33,6 @@ static inline void arch_phys_wc_del(int handle)
 {
 }
 #endif /* CONFIG_MTRR */
-
-#define arch_phys_wc_add arch_phys_wc_add
 #endif
 
 #endif /* __BACKPORT_LINUX_IO_H */
