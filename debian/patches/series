@@ -4,3 +4,4 @@
 0003-more-kconfig-fixes.patch
 ubuntu-3.5-fixups.patch
 3.13-fixup.patch
+drm-dkms-edp-port-b.patch
