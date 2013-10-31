@@ -100,6 +100,7 @@ enum intel_display_power_domain {
 	POWER_DOMAIN_TRANSCODER_C,
 	POWER_DOMAIN_TRANSCODER_EDP,
 	POWER_DOMAIN_VGA,
+	POWER_DOMAIN_INIT,
 
 	POWER_DOMAIN_NUM,
 };
@@ -298,6 +299,7 @@ struct drm_i915_error_state {
 	u32 cpu_ring_tail[I915_NUM_RINGS];
 	u32 error; /* gen6+ */
 	u32 err_int; /* gen7 */
+	u32 bbstate[I915_NUM_RINGS];
 	u32 instpm[I915_NUM_RINGS];
 	u32 instps[I915_NUM_RINGS];
 	u32 extra_instdone[I915_NUM_INSTDONE_REG];
@@ -910,11 +912,21 @@ struct intel_ilk_power_mgmt {
 
 /* Power well structure for haswell */
 struct i915_power_well {
-	struct drm_device *device;
-	struct mutex lock;
 	/* power well enable/disable usage count */
 	int count;
-	int i915_request;
+};
+
+#define I915_MAX_POWER_WELLS 1
+
+struct i915_power_domains {
+	/*
+	 * Power wells needed for initialization at driver init and suspend
+	 * time are on. They are kept on until after the first modeset.
+	 */
+	bool init_power_on;
+
+	struct mutex lock;
+	struct i915_power_well power_wells[I915_MAX_POWER_WELLS];
 };
 
 struct i915_dri1_state {
@@ -1412,8 +1424,7 @@ typedef struct drm_i915_private {
 	 * mchdev_lock in intel_pm.c */
 	struct intel_ilk_power_mgmt ips;
 
-	/* Haswell power well */
-	struct i915_power_well power_well;
+	struct i915_power_domains power_domains;
 
 	struct i915_psr psr;
 
@@ -1875,10 +1886,10 @@ extern void intel_uncore_check_errors(struct drm_device *dev);
 extern void intel_uncore_fini(struct drm_device *dev);
 
 void
-i915_enable_pipestat(drm_i915_private_t *dev_priv, int pipe, u32 mask);
+i915_enable_pipestat(drm_i915_private_t *dev_priv, enum pipe pipe, u32 mask);
 
 void
-i915_disable_pipestat(drm_i915_private_t *dev_priv, int pipe, u32 mask);
+i915_disable_pipestat(drm_i915_private_t *dev_priv, enum pipe pipe, u32 mask);
 
 /* i915_gem.c */
 int i915_gem_init_ioctl(struct drm_device *dev, void *data,

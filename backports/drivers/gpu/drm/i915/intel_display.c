@@ -2421,9 +2421,10 @@ static void intel_fdi_normal_train(struct drm_crtc *crtc)
 			   FDI_FE_ERRC_ENABLE);
 }
 
-static bool pipe_has_enabled_pch(struct intel_crtc *intel_crtc)
+static bool pipe_has_enabled_pch(struct intel_crtc *crtc)
 {
-	return intel_crtc->base.enabled && intel_crtc->config.has_pch_encoder;
+	return crtc->base.enabled && crtc->active &&
+		crtc->config.has_pch_encoder;
 }
 
 static void ivb_modeset_global_resources(struct drm_device *dev)
@@ -3074,6 +3075,48 @@ static void ironlake_pch_transcoder_set_timings(struct intel_crtc *crtc,
 		   I915_READ(VSYNCSHIFT(cpu_transcoder)));
 }
 
+static void cpt_enable_fdi_bc_bifurcation(struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	uint32_t temp;
+
+	temp = I915_READ(SOUTH_CHICKEN1);
+	if (temp & FDI_BC_BIFURCATION_SELECT)
+		return;
+
+	WARN_ON(I915_READ(FDI_RX_CTL(PIPE_B)) & FDI_RX_ENABLE);
+	WARN_ON(I915_READ(FDI_RX_CTL(PIPE_C)) & FDI_RX_ENABLE);
+
+	temp |= FDI_BC_BIFURCATION_SELECT;
+	DRM_DEBUG_KMS("enabling fdi C rx\n");
+	I915_WRITE(SOUTH_CHICKEN1, temp);
+	POSTING_READ(SOUTH_CHICKEN1);
+}
+
+static void ivybridge_update_fdi_bc_bifurcation(struct intel_crtc *intel_crtc)
+{
+	struct drm_device *dev = intel_crtc->base.dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	switch (intel_crtc->pipe) {
+	case PIPE_A:
+		break;
+	case PIPE_B:
+		if (intel_crtc->config.fdi_lanes > 2)
+			WARN_ON(I915_READ(SOUTH_CHICKEN1) & FDI_BC_BIFURCATION_SELECT);
+		else
+			cpt_enable_fdi_bc_bifurcation(dev);
+
+		break;
+	case PIPE_C:
+		cpt_enable_fdi_bc_bifurcation(dev);
+
+		break;
+	default:
+		BUG();
+	}
+}
+
 /*
  * Enable PCH resources required for PCH ports:
  *   - PCH PLLs
@@ -3091,6 +3134,9 @@ static void ironlake_pch_enable(struct drm_crtc *crtc)
 	u32 reg, temp;
 
 	assert_pch_transcoder_disabled(dev_priv, pipe);
+
+	if (IS_IVYBRIDGE(dev))
+		ivybridge_update_fdi_bc_bifurcation(intel_crtc);
 
 	/* Write the TU size bits before fdi link training, so that error
 	 * detection works. */
@@ -5845,48 +5891,6 @@ static bool ironlake_compute_clocks(struct drm_crtc *crtc,
 	return true;
 }
 
-static void cpt_enable_fdi_bc_bifurcation(struct drm_device *dev)
-{
-	struct drm_i915_private *dev_priv = dev->dev_private;
-	uint32_t temp;
-
-	temp = I915_READ(SOUTH_CHICKEN1);
-	if (temp & FDI_BC_BIFURCATION_SELECT)
-		return;
-
-	WARN_ON(I915_READ(FDI_RX_CTL(PIPE_B)) & FDI_RX_ENABLE);
-	WARN_ON(I915_READ(FDI_RX_CTL(PIPE_C)) & FDI_RX_ENABLE);
-
-	temp |= FDI_BC_BIFURCATION_SELECT;
-	DRM_DEBUG_KMS("enabling fdi C rx\n");
-	I915_WRITE(SOUTH_CHICKEN1, temp);
-	POSTING_READ(SOUTH_CHICKEN1);
-}
-
-static void ivybridge_update_fdi_bc_bifurcation(struct intel_crtc *intel_crtc)
-{
-	struct drm_device *dev = intel_crtc->base.dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
-
-	switch (intel_crtc->pipe) {
-	case PIPE_A:
-		break;
-	case PIPE_B:
-		if (intel_crtc->config.fdi_lanes > 2)
-			WARN_ON(I915_READ(SOUTH_CHICKEN1) & FDI_BC_BIFURCATION_SELECT);
-		else
-			cpt_enable_fdi_bc_bifurcation(dev);
-
-		break;
-	case PIPE_C:
-		cpt_enable_fdi_bc_bifurcation(dev);
-
-		break;
-	default:
-		BUG();
-	}
-}
-
 int ironlake_get_lanes_required(int target_clock, int link_bw, int bpp)
 {
 	/*
@@ -6074,9 +6078,6 @@ static int ironlake_crtc_mode_set(struct drm_crtc *crtc,
 		intel_cpu_transcoder_set_m_n(intel_crtc,
 					     &intel_crtc->config.fdi_m_n);
 	}
-
-	if (IS_IVYBRIDGE(dev))
-		ivybridge_update_fdi_bc_bifurcation(intel_crtc);
 
 	ironlake_set_pipeconf(crtc);
 
@@ -6573,6 +6574,21 @@ static unsigned long get_pipe_power_domains(struct drm_device *dev,
 	return mask;
 }
 
+void intel_display_set_init_power(struct drm_device *dev, bool enable)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+
+	if (dev_priv->power_domains.init_power_on == enable)
+		return;
+
+	if (enable)
+		intel_display_power_get(dev, POWER_DOMAIN_INIT);
+	else
+		intel_display_power_put(dev, POWER_DOMAIN_INIT);
+
+	dev_priv->power_domains.init_power_on = enable;
+}
+
 static void modeset_update_power_wells(struct drm_device *dev)
 {
 	unsigned long pipe_domains[I915_MAX_PIPES] = { 0, };
@@ -6604,6 +6620,8 @@ static void modeset_update_power_wells(struct drm_device *dev)
 
 		crtc->enabled_power_domains = pipe_domains[crtc->pipe];
 	}
+
+	intel_display_set_init_power(dev, false);
 }
 
 static void haswell_modeset_global_resources(struct drm_device *dev)
@@ -7312,8 +7330,8 @@ static int intel_crtc_cursor_move(struct drm_crtc *crtc, int x, int y)
 {
 	struct intel_crtc *intel_crtc = to_intel_crtc(crtc);
 
-	intel_crtc->cursor_x = x;
-	intel_crtc->cursor_y = y;
+	intel_crtc->cursor_x = clamp_t(int, x, SHRT_MIN, SHRT_MAX);
+	intel_crtc->cursor_y = clamp_t(int, y, SHRT_MIN, SHRT_MAX);
 
 	if (intel_crtc->active)
 		intel_crtc_update_cursor(crtc, intel_crtc->cursor_bo != NULL);

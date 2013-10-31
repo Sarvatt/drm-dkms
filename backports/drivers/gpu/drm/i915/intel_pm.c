@@ -254,18 +254,6 @@ static void ironlake_disable_fbc(struct drm_device *dev)
 		dpfc_ctl &= ~DPFC_CTL_EN;
 		I915_WRITE(ILK_DPFC_CONTROL, dpfc_ctl);
 
-		if (IS_IVYBRIDGE(dev))
-			/* WaFbcDisableDpfcClockGating:ivb */
-			I915_WRITE(ILK_DSPCLK_GATE_D,
-				   I915_READ(ILK_DSPCLK_GATE_D) &
-				   ~ILK_DPFCUNIT_CLOCK_GATE_DISABLE);
-
-		if (IS_HASWELL(dev))
-			/* WaFbcDisableDpfcClockGating:hsw */
-			I915_WRITE(HSW_CLKGATE_DISABLE_PART_1,
-				   I915_READ(HSW_CLKGATE_DISABLE_PART_1) &
-				   ~HSW_DPFC_GATING_DISABLE);
-
 		DRM_DEBUG_KMS("disabled FBC\n");
 	}
 }
@@ -295,18 +283,10 @@ static void gen7_enable_fbc(struct drm_crtc *crtc, unsigned long interval)
 	if (IS_IVYBRIDGE(dev)) {
 		/* WaFbcAsynchFlipDisableFbcQueue:ivb */
 		I915_WRITE(ILK_DISPLAY_CHICKEN1, ILK_FBCQ_DIS);
-		/* WaFbcDisableDpfcClockGating:ivb */
-		I915_WRITE(ILK_DSPCLK_GATE_D,
-			   I915_READ(ILK_DSPCLK_GATE_D) |
-			   ILK_DPFCUNIT_CLOCK_GATE_DISABLE);
 	} else {
 		/* WaFbcAsynchFlipDisableFbcQueue:hsw */
 		I915_WRITE(HSW_PIPE_SLICE_CHICKEN_1(intel_crtc->pipe),
 			   HSW_BYPASS_FBC_QUEUE);
-		/* WaFbcDisableDpfcClockGating:hsw */
-		I915_WRITE(HSW_CLKGATE_DISABLE_PART_1,
-			   I915_READ(HSW_CLKGATE_DISABLE_PART_1) |
-			   HSW_DPFC_GATING_DISABLE);
 	}
 
 	I915_WRITE(SNB_DPFC_CTL_SA,
@@ -3915,7 +3895,7 @@ void gen6_update_ring_freq(struct drm_device *dev)
 	/* Convert from kHz to MHz */
 	max_ia_freq /= 1000;
 
-	min_ring_freq = I915_READ(MCHBAR_MIRROR_BASE_SNB + DCLK) & 0xf;
+	min_ring_freq = I915_READ(DCLK) & 0xf;
 	/* convert DDR frequency from units of 266.6MHz to bandwidth */
 	min_ring_freq = mult_frac(min_ring_freq, 8, 3);
 
@@ -5608,24 +5588,26 @@ static void __intel_set_power_well(struct drm_device *dev, bool enable)
 	}
 }
 
-static void __intel_power_well_get(struct i915_power_well *power_well)
+static void __intel_power_well_get(struct drm_device *dev,
+				   struct i915_power_well *power_well)
 {
 	if (!power_well->count++)
-		__intel_set_power_well(power_well->device, true);
+		__intel_set_power_well(dev, true);
 }
 
-static void __intel_power_well_put(struct i915_power_well *power_well)
+static void __intel_power_well_put(struct drm_device *dev,
+				   struct i915_power_well *power_well)
 {
 	WARN_ON(!power_well->count);
 	if (!--power_well->count)
-		__intel_set_power_well(power_well->device, false);
+		__intel_set_power_well(dev, false);
 }
 
 void intel_display_power_get(struct drm_device *dev,
 			     enum intel_display_power_domain domain)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct i915_power_well *power_well = &dev_priv->power_well;
+	struct i915_power_domains *power_domains;
 
 	if (!HAS_POWER_WELL(dev))
 		return;
@@ -5633,16 +5615,18 @@ void intel_display_power_get(struct drm_device *dev,
 	if (is_always_on_power_domain(dev, domain))
 		return;
 
-	mutex_lock(&power_well->lock);
-	__intel_power_well_get(power_well);
-	mutex_unlock(&power_well->lock);
+	power_domains = &dev_priv->power_domains;
+
+	mutex_lock(&power_domains->lock);
+	__intel_power_well_get(dev, &power_domains->power_wells[0]);
+	mutex_unlock(&power_domains->lock);
 }
 
 void intel_display_power_put(struct drm_device *dev,
 			     enum intel_display_power_domain domain)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct i915_power_well *power_well = &dev_priv->power_well;
+	struct i915_power_domains *power_domains;
 
 	if (!HAS_POWER_WELL(dev))
 		return;
@@ -5650,21 +5634,28 @@ void intel_display_power_put(struct drm_device *dev,
 	if (is_always_on_power_domain(dev, domain))
 		return;
 
-	mutex_lock(&power_well->lock);
-	__intel_power_well_put(power_well);
-	mutex_unlock(&power_well->lock);
+	power_domains = &dev_priv->power_domains;
+
+	mutex_lock(&power_domains->lock);
+	__intel_power_well_put(dev, &power_domains->power_wells[0]);
+	mutex_unlock(&power_domains->lock);
 }
 
-static struct i915_power_well *hsw_pwr;
+static struct i915_power_domains *hsw_pwr;
 
 /* Display audio driver power well request */
 void i915_request_power_well(void)
 {
+	struct drm_i915_private *dev_priv;
+
 	if (WARN_ON(!hsw_pwr))
 		return;
 
+	dev_priv = container_of(hsw_pwr, struct drm_i915_private,
+				power_domains);
+
 	mutex_lock(&hsw_pwr->lock);
-	__intel_power_well_get(hsw_pwr);
+	__intel_power_well_get(dev_priv->dev, &hsw_pwr->power_wells[0]);
 	mutex_unlock(&hsw_pwr->lock);
 }
 EXPORT_SYMBOL_GPL(i915_request_power_well);
@@ -5672,77 +5663,55 @@ EXPORT_SYMBOL_GPL(i915_request_power_well);
 /* Display audio driver power well release */
 void i915_release_power_well(void)
 {
+	struct drm_i915_private *dev_priv;
+
 	if (WARN_ON(!hsw_pwr))
 		return;
 
+	dev_priv = container_of(hsw_pwr, struct drm_i915_private,
+				power_domains);
+
 	mutex_lock(&hsw_pwr->lock);
-	__intel_power_well_put(hsw_pwr);
+	__intel_power_well_put(dev_priv->dev, &hsw_pwr->power_wells[0]);
 	mutex_unlock(&hsw_pwr->lock);
 }
 EXPORT_SYMBOL_GPL(i915_release_power_well);
 
-int i915_init_power_well(struct drm_device *dev)
+int intel_power_domains_init(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct i915_power_domains *power_domains = &dev_priv->power_domains;
+	struct i915_power_well *power_well;
 
-	hsw_pwr = &dev_priv->power_well;
+	mutex_init(&power_domains->lock);
+	hsw_pwr = power_domains;
 
-	hsw_pwr->device = dev;
-	mutex_init(&hsw_pwr->lock);
-	hsw_pwr->count = 0;
+	power_well = &power_domains->power_wells[0];
+	power_well->count = 0;
 
 	return 0;
 }
 
-void i915_remove_power_well(struct drm_device *dev)
+void intel_power_domains_remove(struct drm_device *dev)
 {
 	hsw_pwr = NULL;
 }
 
-void intel_set_power_well(struct drm_device *dev, bool enable)
+static void intel_power_domains_resume(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct i915_power_well *power_well = &dev_priv->power_well;
+	struct i915_power_domains *power_domains = &dev_priv->power_domains;
+	struct i915_power_well *power_well;
 
 	if (!HAS_POWER_WELL(dev))
 		return;
 
-	if (!i915_disable_power_well && !enable)
-		return;
+	mutex_lock(&power_domains->lock);
 
-	mutex_lock(&power_well->lock);
-
-	/*
-	 * This function will only ever contribute one
-	 * to the power well reference count. i915_request
-	 * is what tracks whether we have or have not
-	 * added the one to the reference count.
-	 */
-	if (power_well->i915_request == enable)
-		goto out;
-
-	power_well->i915_request = enable;
-
-	if (enable)
-		__intel_power_well_get(power_well);
-	else
-		__intel_power_well_put(power_well);
-
- out:
-	mutex_unlock(&power_well->lock);
-}
-
-static void intel_resume_power_well(struct drm_device *dev)
-{
-	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct i915_power_well *power_well = &dev_priv->power_well;
-
-	if (!HAS_POWER_WELL(dev))
-		return;
-
-	mutex_lock(&power_well->lock);
+	power_well = &power_domains->power_wells[0];
 	__intel_set_power_well(dev, power_well->count > 0);
-	mutex_unlock(&power_well->lock);
+
+	mutex_unlock(&power_domains->lock);
 }
 
 /*
@@ -5751,7 +5720,7 @@ static void intel_resume_power_well(struct drm_device *dev)
  * to be enabled, and it will only be disabled if none of the registers is
  * requesting it to be enabled.
  */
-void intel_init_power_well(struct drm_device *dev)
+void intel_power_domains_init_hw(struct drm_device *dev)
 {
 	struct drm_i915_private *dev_priv = dev->dev_private;
 
@@ -5759,8 +5728,8 @@ void intel_init_power_well(struct drm_device *dev)
 		return;
 
 	/* For now, we need the power well to be always enabled. */
-	intel_set_power_well(dev, true);
-	intel_resume_power_well(dev);
+	intel_display_set_init_power(dev, true);
+	intel_power_domains_resume(dev);
 
 	/* We're taking over the BIOS, so clear any requests made by it since
 	 * the driver is in charge now. */

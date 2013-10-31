@@ -550,6 +550,7 @@ config ASUS_WMI
 	depends on BACKLIGHT_CLASS_DEVICE
 	depends on RFKILL || RFKILL = n
 	depends on HOTPLUG_PCI
+	depends on ACPI_VIDEO || ACPI_VIDEO = n
 	depends on INPUT_SPARSEKMAP
 	select BACKPORT_LEDS_CLASS
 	select BACKPORT_NEW_LEDS

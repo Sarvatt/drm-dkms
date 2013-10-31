@@ -595,7 +595,7 @@ enum drm_connector_force {
  */
 struct drm_connector {
 	struct drm_device *dev;
-	struct device kdev;
+	struct device *kdev;
 	struct device_attribute *attr;
 	struct list_head head;
 
@@ -1144,5 +1144,22 @@ extern int drm_format_plane_cpp(uint32_t format, int plane);
 extern int drm_format_horz_chroma_subsampling(uint32_t format);
 extern int drm_format_vert_chroma_subsampling(uint32_t format);
 extern const char *drm_get_format_name(uint32_t format);
+
+/* Helpers */
+static inline struct drm_crtc *drm_crtc_find(struct drm_device *dev,
+	uint32_t id)
+{
+	struct drm_mode_object *mo;
+	mo = drm_mode_object_find(dev, id, DRM_MODE_OBJECT_CRTC);
+	return mo ? obj_to_crtc(mo) : NULL;
+}
+
+static inline struct drm_encoder *drm_encoder_find(struct drm_device *dev,
+	uint32_t id)
+{
+	struct drm_mode_object *mo;
+	mo = drm_mode_object_find(dev, id, DRM_MODE_OBJECT_ENCODER);
+	return mo ? obj_to_encoder(mo) : NULL;
+}
 
 #endif /* __DRM_CRTC_H__ */

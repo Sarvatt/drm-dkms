@@ -444,7 +444,7 @@
 
 #define _DPIO_TX3_SWING_CTL4_A		0x690
 #define _DPIO_TX3_SWING_CTL4_B		0x2a90
-#define DPIO_TX3_SWING_CTL4(pipe) _PIPE(pipe, _DPIO_TX_SWING_CTL4_A, \
+#define DPIO_TX3_SWING_CTL4(pipe) _PIPE(pipe, _DPIO_TX3_SWING_CTL4_A, \
 					_DPIO_TX3_SWING_CTL4_B)
 
 /*
@@ -722,6 +722,7 @@
 #define NOPID		0x02094
 #define HWSTAM		0x02098
 #define DMA_FADD_I8XX	0x020d0
+#define RING_BBSTATE(base)	((base)+0x110)
 
 #define ERROR_GEN6	0x040a0
 #define GEN7_ERR_INT	0x44040
@@ -1110,9 +1111,6 @@
 					     _HSW_PIPE_SLICE_CHICKEN_1_A, + \
 					     _HSW_PIPE_SLICE_CHICKEN_1_B)
 
-#define HSW_CLKGATE_DISABLE_PART_1	0x46500
-#define   HSW_DPFC_GATING_DISABLE	(1<<23)
-
 /*
  * GPIO regs
  */
@@ -1480,7 +1478,7 @@
 #define MCHBAR_MIRROR_BASE_SNB	0x140000
 
 /* Memory controller frequency in MCHBAR for Haswell (possible SNB+) */
-#define DCLK 0x5e04
+#define DCLK (MCHBAR_MIRROR_BASE_SNB + 0x5e04)
 
 /** 915-945 and GM965 MCH register controlling DRAM channel access */
 #define DCC			0x10200
@@ -1775,9 +1773,9 @@
 #define GEN6_GT_THREAD_STATUS_CORE_MASK 0x7
 #define GEN6_GT_THREAD_STATUS_CORE_MASK_HSW (0x7 | (0x07 << 16))
 
-#define GEN6_GT_PERF_STATUS	0x145948
-#define GEN6_RP_STATE_LIMITS	0x145994
-#define GEN6_RP_STATE_CAP	0x145998
+#define GEN6_GT_PERF_STATUS	(MCHBAR_MIRROR_BASE_SNB + 0x5948)
+#define GEN6_RP_STATE_LIMITS	(MCHBAR_MIRROR_BASE_SNB + 0x5994)
+#define GEN6_RP_STATE_CAP	(MCHBAR_MIRROR_BASE_SNB + 0x5998)
 
 /*
  * Logical Context regs
@@ -3932,6 +3930,7 @@
 #define DE_SPRITEA_FLIP_DONE    (1 << 28)
 #define DE_PLANEB_FLIP_DONE     (1 << 27)
 #define DE_PLANEA_FLIP_DONE     (1 << 26)
+#define DE_PLANE_FLIP_DONE(plane) (1 << (26 + (plane)))
 #define DE_PCU_EVENT            (1 << 25)
 #define DE_GTT_FAULT            (1 << 24)
 #define DE_POISON               (1 << 23)
@@ -3948,12 +3947,15 @@
 #define DE_PIPEB_CRC_DONE	(1 << 10)
 #define DE_PIPEB_FIFO_UNDERRUN  (1 << 8)
 #define DE_PIPEA_VBLANK         (1 << 7)
+#define DE_PIPE_VBLANK(pipe)    (1 << (7 + 8*(pipe)))
 #define DE_PIPEA_EVEN_FIELD     (1 << 6)
 #define DE_PIPEA_ODD_FIELD      (1 << 5)
 #define DE_PIPEA_LINE_COMPARE   (1 << 4)
 #define DE_PIPEA_VSYNC          (1 << 3)
 #define DE_PIPEA_CRC_DONE	(1 << 2)
+#define DE_PIPE_CRC_DONE(pipe)	(1 << (2 + 8*(pipe)))
 #define DE_PIPEA_FIFO_UNDERRUN  (1 << 0)
+#define DE_PIPE_FIFO_UNDERRUN(pipe)  (1 << (8*(pipe)))
 
 /* More Ivybridge lolz */
 #define DE_ERR_INT_IVB			(1<<30)
@@ -3969,9 +3971,8 @@
 #define DE_PIPEB_VBLANK_IVB		(1<<5)
 #define DE_SPRITEA_FLIP_DONE_IVB	(1<<4)
 #define DE_PLANEA_FLIP_DONE_IVB		(1<<3)
+#define DE_PLANE_FLIP_DONE_IVB(plane)	(1<< (3 + 5*(plane)))
 #define DE_PIPEA_VBLANK_IVB		(1<<0)
-
-#define DE_PIPE_VBLANK_ILK(pipe)	(1 << ((pipe * 8) + 7))
 #define DE_PIPE_VBLANK_IVB(pipe)	(1 << (pipe * 5))
 
 #define VLV_MASTER_IER			0x4400c /* Gunit master IER */

@@ -1311,7 +1311,7 @@ static int i915_load_modeset_init(struct drm_device *dev)
 	if (ret)
 		goto cleanup_gem_stolen;
 
-	intel_init_power_well(dev);
+	intel_power_domains_init_hw(dev);
 
 	/* Important: The output setup functions called by modeset_init need
 	 * working irqs for e.g. gmbus and dp aux transfers. */
@@ -1640,7 +1640,7 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 	}
 
 	if (HAS_POWER_WELL(dev))
-		i915_init_power_well(dev);
+		intel_power_domains_init(dev);
 
 	if (drm_core_check_feature(dev, DRIVER_MODESET)) {
 		ret = i915_load_modeset_init(dev);
@@ -1668,7 +1668,7 @@ int i915_driver_load(struct drm_device *dev, unsigned long flags)
 
 out_power_well:
 	if (HAS_POWER_WELL(dev))
-		i915_remove_power_well(dev);
+		intel_power_domains_remove(dev);
 	drm_vblank_cleanup(dev);
 out_gem_unload:
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,12,0))
@@ -1714,8 +1714,8 @@ int i915_driver_unload(struct drm_device *dev)
 		/* The i915.ko module is still not prepared to be loaded when
 		 * the power well is not enabled, so just enable it in case
 		 * we're going to unload/reload. */
-		intel_set_power_well(dev, true);
-		i915_remove_power_well(dev);
+		intel_display_set_init_power(dev, true);
+		intel_power_domains_remove(dev);
 	}
 
 	i915_teardown_sysfs(dev);

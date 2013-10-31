@@ -50,6 +50,7 @@ obj-$(CPTCFG_DRM_EXYNOS) +=exynos/
 obj-$(CPTCFG_DRM_GMA500) += gma500/
 obj-$(CPTCFG_DRM_UDL) += udl/
 obj-$(CPTCFG_DRM_AST) += ast/
+obj-$(CPTCFG_DRM_ARMADA) += armada/
 obj-$(CPTCFG_DRM_RCAR_DU) += rcar-du/
 obj-$(CPTCFG_DRM_SHMOBILE) +=shmobile/
 obj-$(CPTCFG_DRM_OMAP)	+= omapdrm/
