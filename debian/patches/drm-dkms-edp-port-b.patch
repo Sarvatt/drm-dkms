@@ -1,201 +1,109 @@
-From 437d33d08d7c5dbd239fd442944b8eb254fc0527 Mon Sep 17 00:00:00 2001
+From ab433105645f5e64ffac743c110096568eb4d23f Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Ville=20Syrj=C3=A4l=C3=A4?= <ville.syrjala@linux.intel.com>
-Date: Thu, 31 Oct 2013 17:25:21 +0200
-Subject: [PATCH] drm/i915: Try to initialize eDP for both ports B and C on VLV
+Date: Thu, 31 Oct 2013 20:36:45 +0200
+Subject: [PATCH] drm/i915: Check VBT for eDP ports on VLV
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-On VLV both ports B and C can support either DP or eDP. Try to
-initialize eDP first on each port, and if that fails fall back to
-regular DP connector.
+VLV can have eDP on either port B or C, or even both. Based on the
+VBT spec, intel_dpd_is_edp() should work on VLV too, assuming we
+check the correct ports.
 
-intel_dp_init_typed() is now like the old intel_dp_init, except you pass
-in the connector type. If you pass DRM_MODE_CONNECTOR_Unknown, the code
-falls back to the old port/VBT based auto detection to determine the
-actualy type.
+So instead of hardcoding port D, rename the function to
+intel_dp_is_edp() and pass the port as a parameter, and use it
+on VLV ports B and C.
 
 Bugzilla: https://bugs.freedesktop.org/show_bug.cgi?id=71051
-Signed-off-by: Ville Syrjälä <ville.syrjala@linux.intel.com>
+Signed-off-by: Ville SyrjÃ¤lÃ¤ <ville.syrjala@linux.intel.com>
 ---
- drivers/gpu/drm/i915/intel_ddi.c     |  3 +-
- drivers/gpu/drm/i915/intel_display.c | 11 +++++--
- drivers/gpu/drm/i915/intel_dp.c      | 60 +++++++++++++++++++++---------------
- drivers/gpu/drm/i915/intel_drv.h     |  5 ++-
- 4 files changed, 49 insertions(+), 30 deletions(-)
+ drivers/gpu/drm/i915/intel_display.c |  5 ++---
+ drivers/gpu/drm/i915/intel_dp.c      | 14 ++++++++++----
+ drivers/gpu/drm/i915/intel_drv.h     |  2 +-
+ 3 files changed, 13 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/intel_ddi.c b/drivers/gpu/drm/i915/intel_ddi.c
-index 31f4fe2..dd2660c 100644
---- a/backports/drivers/gpu/drm/i915/intel_ddi.c
-+++ b/backports/drivers/gpu/drm/i915/intel_ddi.c
-@@ -1356,7 +1356,8 @@ intel_ddi_init_dp_connector(struct intel_digital_port *intel_dig_port)
- 		return NULL;
- 
- 	intel_dig_port->dp.output_reg = DDI_BUF_CTL(port);
--	if (!intel_dp_init_connector(intel_dig_port, connector)) {
-+	if (!intel_dp_init_connector(intel_dig_port, connector,
-+				     DRM_MODE_CONNECTOR_Unknown)) {
- 		kfree(connector);
- 		return NULL;
- 	}
 diff --git a/drivers/gpu/drm/i915/intel_display.c b/drivers/gpu/drm/i915/intel_display.c
-index 8f40ae3..16225eb 100644
+index 8f40ae3..3cdfbda 100644
 --- a/backports/drivers/gpu/drm/i915/intel_display.c
 +++ b/backports/drivers/gpu/drm/i915/intel_display.c
-@@ -9984,15 +9984,20 @@ static void intel_setup_outputs(struct drm_device *dev)
- 			intel_hdmi_init(dev, VLV_DISPLAY_BASE + GEN4_HDMIB,
- 					PORT_B);
- 			if (I915_READ(VLV_DISPLAY_BASE + DP_B) & DP_DETECTED)
--				intel_dp_init(dev, VLV_DISPLAY_BASE + DP_B, PORT_B);
-+				if (!intel_dp_init_typed(dev, VLV_DISPLAY_BASE + DP_B,
-+							 PORT_B, DRM_MODE_CONNECTOR_eDP))
-+					intel_dp_init_typed(dev, VLV_DISPLAY_BASE + DP_B,
-+							    PORT_B, DRM_MODE_CONNECTOR_DisplayPort);
- 		}
+@@ -9954,7 +9954,7 @@ static void intel_setup_outputs(struct drm_device *dev)
+ 			intel_ddi_init(dev, PORT_D);
+ 	} else if (HAS_PCH_SPLIT(dev)) {
+ 		int found;
+-		dpd_is_edp = intel_dpd_is_edp(dev);
++		dpd_is_edp = intel_dp_is_edp(dev, PORT_D);
  
- 		if (I915_READ(VLV_DISPLAY_BASE + GEN4_HDMIC) & SDVO_DETECTED) {
+ 		if (has_edp_a(dev))
+ 			intel_dp_init(dev, DP_A, PORT_A);
+@@ -9991,8 +9991,7 @@ static void intel_setup_outputs(struct drm_device *dev)
  			intel_hdmi_init(dev, VLV_DISPLAY_BASE + GEN4_HDMIC,
  					PORT_C);
  			if (I915_READ(VLV_DISPLAY_BASE + DP_C) & DP_DETECTED)
 -				intel_dp_init(dev, VLV_DISPLAY_BASE + DP_C,
 -					      PORT_C);
-+				if (!intel_dp_init_typed(dev, VLV_DISPLAY_BASE + DP_C,
-+							 PORT_C, DRM_MODE_CONNECTOR_eDP))
-+					intel_dp_init_typed(dev, VLV_DISPLAY_BASE + DP_C,
-+							    PORT_C, DRM_MODE_CONNECTOR_DisplayPort);
++				intel_dp_init(dev, VLV_DISPLAY_BASE + DP_C, PORT_C);
  		}
  
  		intel_dsi_init(dev);
 diff --git a/drivers/gpu/drm/i915/intel_dp.c b/drivers/gpu/drm/i915/intel_dp.c
-index b3cc333..6be6585 100644
+index b3cc333..ede023c 100644
 --- a/backports/drivers/gpu/drm/i915/intel_dp.c
 +++ b/backports/drivers/gpu/drm/i915/intel_dp.c
-@@ -3540,7 +3540,8 @@ static bool intel_edp_init_connector(struct intel_dp *intel_dp,
+@@ -3263,11 +3263,16 @@ intel_trans_dp_port_sel(struct drm_crtc *crtc)
+ }
  
- bool
- intel_dp_init_connector(struct intel_digital_port *intel_dig_port,
--			struct intel_connector *intel_connector)
-+			struct intel_connector *intel_connector,
-+			int type)
+ /* check the VBT to see whether the eDP is on DP-D port */
+-bool intel_dpd_is_edp(struct drm_device *dev)
++bool intel_dp_is_edp(struct drm_device *dev, enum port port)
  {
- 	struct drm_connector *connector = &intel_connector->base;
- 	struct intel_dp *intel_dp = &intel_dig_port->dp;
-@@ -3549,33 +3550,32 @@ intel_dp_init_connector(struct intel_digital_port *intel_dig_port,
  	struct drm_i915_private *dev_priv = dev->dev_private;
- 	enum port port = intel_dig_port->port;
- 	const char *name = NULL;
--	int type, error;
-+	int error;
+ 	union child_device_config *p_child;
+ 	int i;
++	static const short port_mapping[] = {
++		[PORT_B] = PORT_IDPB,
++		[PORT_C] = PORT_IDPC,
++		[PORT_D] = PORT_IDPD,
++	};
  
- 	/* Preserve the current hw state. */
- 	intel_dp->DP = I915_READ(intel_dp->output_reg);
- 	intel_dp->attached_connector = intel_connector;
+ 	if (!dev_priv->vbt.child_dev_num)
+ 		return false;
+@@ -3275,7 +3280,7 @@ bool intel_dpd_is_edp(struct drm_device *dev)
+ 	for (i = 0; i < dev_priv->vbt.child_dev_num; i++) {
+ 		p_child = dev_priv->vbt.child_dev + i;
  
--	type = DRM_MODE_CONNECTOR_DisplayPort;
--	/*
--	 * FIXME : We need to initialize built-in panels before external panels.
--	 * For X0, DP_C is fixed as eDP. Revisit this as part of VLV eDP cleanup
--	 */
--	switch (port) {
--	case PORT_A:
--		type = DRM_MODE_CONNECTOR_eDP;
--		break;
--	case PORT_C:
+-		if (p_child->common.dvo_port == PORT_IDPD &&
++		if (p_child->common.dvo_port == port_mapping[port] &&
+ 		    p_child->common.device_type == DEVICE_TYPE_eDP)
+ 			return true;
+ 	}
+@@ -3564,12 +3569,13 @@ intel_dp_init_connector(struct intel_digital_port *intel_dig_port,
+ 	case PORT_A:
+ 		type = DRM_MODE_CONNECTOR_eDP;
+ 		break;
++	case PORT_B:
+ 	case PORT_C:
 -		if (IS_VALLEYVIEW(dev))
--			type = DRM_MODE_CONNECTOR_eDP;
--		break;
--	case PORT_D:
--		if (HAS_PCH_SPLIT(dev) && intel_dpd_is_edp(dev))
-+	if (type == DRM_MODE_CONNECTOR_Unknown) {
-+		type = DRM_MODE_CONNECTOR_DisplayPort;
-+
-+		switch (port) {
-+		case PORT_A:
++		if (IS_VALLEYVIEW(dev) && intel_dp_is_edp(dev, port))
  			type = DRM_MODE_CONNECTOR_eDP;
--		break;
--	default:	/* silence GCC warning */
--		break;
-+			break;
-+		case PORT_D:
-+			if (HAS_PCH_SPLIT(dev) && intel_dpd_is_edp(dev))
-+				type = DRM_MODE_CONNECTOR_eDP;
-+			break;
-+		default:	/* silence GCC warning */
-+			break;
-+		}
- 	}
- 
-+	if (WARN_ON(type != DRM_MODE_CONNECTOR_DisplayPort &&
-+		    type != DRM_MODE_CONNECTOR_eDP))
-+		return false;
-+
- 	/*
- 	 * For eDP we always set the encoder type to INTEL_OUTPUT_EDP, but
- 	 * for DP the encoder type can be set by the caller to
-@@ -3680,8 +3680,9 @@ intel_dp_init_connector(struct intel_digital_port *intel_dig_port,
- 	return true;
- }
- 
--void
--intel_dp_init(struct drm_device *dev, int output_reg, enum port port)
-+bool
-+intel_dp_init_typed(struct drm_device *dev, int output_reg,
-+		    enum port port, int type)
- {
- 	struct intel_digital_port *intel_dig_port;
- 	struct intel_encoder *intel_encoder;
-@@ -3690,12 +3691,12 @@ intel_dp_init(struct drm_device *dev, int output_reg, enum port port)
- 
- 	intel_dig_port = kzalloc(sizeof(*intel_dig_port), GFP_KERNEL);
- 	if (!intel_dig_port)
--		return;
-+		return false;
- 
- 	intel_connector = kzalloc(sizeof(*intel_connector), GFP_KERNEL);
- 	if (!intel_connector) {
- 		kfree(intel_dig_port);
--		return;
-+		return false;
- 	}
- 
- 	intel_encoder = &intel_dig_port->base;
-@@ -3727,9 +3728,18 @@ intel_dp_init(struct drm_device *dev, int output_reg, enum port port)
- 	intel_encoder->cloneable = false;
- 	intel_encoder->hot_plug = intel_dp_hot_plug;
- 
--	if (!intel_dp_init_connector(intel_dig_port, intel_connector)) {
-+	if (!intel_dp_init_connector(intel_dig_port, intel_connector, type)) {
- 		drm_encoder_cleanup(encoder);
- 		kfree(intel_dig_port);
- 		kfree(intel_connector);
-+		return false;
- 	}
-+
-+	return true;
-+}
-+
-+void
-+intel_dp_init(struct drm_device *dev, int output_reg, enum port port)
-+{
-+	intel_dp_init_typed(dev, output_reg, port, DRM_MODE_CONNECTOR_Unknown);
- }
+ 		break;
+ 	case PORT_D:
+-		if (HAS_PCH_SPLIT(dev) && intel_dpd_is_edp(dev))
++		if (HAS_PCH_SPLIT(dev) && intel_dp_is_edp(dev, port))
+ 			type = DRM_MODE_CONNECTOR_eDP;
+ 		break;
+ 	default:	/* silence GCC warning */
 diff --git a/drivers/gpu/drm/i915/intel_drv.h b/drivers/gpu/drm/i915/intel_drv.h
-index 9d2624f..ff982d9 100644
+index 9d2624f..3612896 100644
 --- a/backports/drivers/gpu/drm/i915/intel_drv.h
 +++ b/backports/drivers/gpu/drm/i915/intel_drv.h
-@@ -697,8 +697,11 @@ void intel_display_set_init_power(struct drm_device *dev, bool enable);
- 
- /* intel_dp.c */
- void intel_dp_init(struct drm_device *dev, int output_reg, enum port port);
-+bool intel_dp_init_typed(struct drm_device *dev, int output_reg,
-+			 enum port port, int type);
- bool intel_dp_init_connector(struct intel_digital_port *intel_dig_port,
--			     struct intel_connector *intel_connector);
-+			     struct intel_connector *intel_connector,
-+			     int type);
- void intel_dp_start_link_train(struct intel_dp *intel_dp);
- void intel_dp_complete_link_train(struct intel_dp *intel_dp);
- void intel_dp_stop_link_train(struct intel_dp *intel_dp);
+@@ -707,7 +707,7 @@ void intel_dp_encoder_destroy(struct drm_encoder *encoder);
+ void intel_dp_check_link_status(struct intel_dp *intel_dp);
+ bool intel_dp_compute_config(struct intel_encoder *encoder,
+ 			     struct intel_crtc_config *pipe_config);
+-bool intel_dpd_is_edp(struct drm_device *dev);
++bool intel_dp_is_edp(struct drm_device *dev, enum port port);
+ void ironlake_edp_backlight_on(struct intel_dp *intel_dp);
+ void ironlake_edp_backlight_off(struct intel_dp *intel_dp);
+ void ironlake_edp_panel_on(struct intel_dp *intel_dp);
 -- 
 1.8.1.5
-
