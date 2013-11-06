@@ -2,6 +2,6 @@ drm-dkms (3.13.0~prerc1~hwe1) precise; urgency=medium
 
   * Switch drm-dkms to use https://backports.wiki.kernel.org backports package.
   * Refresh backports package against drm-intel-nightly 20131031
-  * Add patch from fdo#71051 to fix eDP on pipe B on baytrail platforms.
+  * Add 2 patches from fdo#71051 to fix eDP on baytrail platforms.
 
  -- Robert Hooker <sarvatt@ubuntu.com>  Thu, 31 Oct 2013 14:54:36 -0400

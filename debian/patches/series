@@ -5,3 +5,4 @@
 ubuntu-3.5-fixups.patch
 3.13-fixup.patch
 drm-dkms-edp-port-b.patch
+make_intel_dp_is_edp_less_specific.patch
