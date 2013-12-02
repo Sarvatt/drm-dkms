@@ -1,7 +1,7 @@
-drm-dkms (3.13.0~rc2~hwe1) precise; urgency=medium
+drm-dkms (3.13.0~rc2~hwe2) precise; urgency=medium
 
   * Switch drm-dkms to use https://backports.wiki.kernel.org backports package.
   * Refresh backports package against 3.13-rc2
-  * Merge drm-intel-fixes for VLV fixes
+  * Merge drm-intel-fixes for Baytrail fixes.
 
  -- Robert Hooker <sarvatt@ubuntu.com>  Mon, 02 Dec 2013 14:54:36 -0400

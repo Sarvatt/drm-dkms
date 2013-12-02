@@ -26,3 +26,4 @@ override_dh_auto_install:
 
 	sed -e 's/#VERSION#/$(VERSION)/' $(CURDIR)/debian/dkms.conf.in \
 	  > "$(SRC)/$(NAME)-$(VERSION)/dkms.conf"
+	cp -a $(CURDIR)/debian/dkms/patches "$(SRC)/$(NAME)-$(VERSION)"
