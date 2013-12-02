@@ -1,0 +1,13 @@
+diff --git a/backports/drivers/gpu/drm/i915/i915_gem_gtt.c b/backports/drivers/gpu/drm/i915/i915_gem_gtt.c
+index d70ab48..94cf10a 100644
+--- a/backports/drivers/gpu/drm/i915/i915_gem_gtt.c
++++ b/backports/drivers/gpu/drm/i915/i915_gem_gtt.c
+@@ -535,7 +535,7 @@ static void i915_ggtt_insert_entries(struct drm_device *dev,
+ 	unsigned int flags = (cache_level == I915_CACHE_NONE) ?
+ 		AGP_USER_MEMORY : AGP_USER_CACHED_MEMORY;
+ 
+-	intel_gtt_insert_sg_entries(st, pg_start, flags);
++	intel_gtt_insert_sg_entries_hsw(st, pg_start, flags);
+ 
+ }
+ 
