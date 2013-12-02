@@ -147,7 +147,7 @@ int drm_stub_open(struct inode *inode, struct file *filp)
 	struct drm_minor *minor;
 	int minor_id = iminor(inode);
 	int err = -ENODEV;
-	const struct file_operations *old_fops;
+	const struct file_operations *new_fops;
 
 	DRM_DEBUG("\n");
 
@@ -162,18 +162,13 @@ int drm_stub_open(struct inode *inode, struct file *filp)
 	if (drm_device_is_unplugged(dev))
 		goto out;
 
-	old_fops = filp->f_op;
-	filp->f_op = fops_get(dev->driver->fops);
-	if (filp->f_op == NULL) {
-		filp->f_op = old_fops;
+	new_fops = fops_get(dev->driver->fops);
+	if (!new_fops)
 		goto out;
-	}
-	if (filp->f_op->open && (err = filp->f_op->open(inode, filp))) {
-		fops_put(filp->f_op);
-		filp->f_op = fops_get(old_fops);
-	}
-	fops_put(old_fops);
 
+	replace_fops(filp, new_fops);
+	if (filp->f_op->open)
+		err = filp->f_op->open(inode, filp);
 out:
 	mutex_unlock(&drm_global_mutex);
 	return err;
@@ -239,7 +234,8 @@ static int drm_open_helper(struct inode *inode, struct file *filp,
 
 	priv->ioctl_count = 0;
 	/* for compatibility root is always authenticated */
-	priv->authenticated = capable(CAP_SYS_ADMIN);
+	priv->always_authenticated = capable(CAP_SYS_ADMIN);
+	priv->authenticated = priv->always_authenticated;
 	priv->lock_count = 0;
 
 	INIT_LIST_HEAD(&priv->lhead);
@@ -378,8 +374,10 @@ static void drm_events_release(struct drm_file *file_priv)
 		}
 
 	/* Remove unconsumed events */
-	list_for_each_entry_safe(e, et, &file_priv->event_list, link)
+	list_for_each_entry_safe(e, et, &file_priv->event_list, link) {
+		list_del(&e->link);
 		e->destroy(e);
+	}
 
 	spin_unlock_irqrestore(&dev->event_lock, flags);
 }
@@ -531,7 +529,7 @@ int drm_release(struct inode *inode, struct file *filp)
 		list_for_each_entry(temp, &dev->filelist, lhead) {
 			if ((temp->master == file_priv->master) &&
 			    (temp != file_priv))
-				temp->authenticated = 0;
+				temp->authenticated = temp->always_authenticated;
 		}
 
 		/**

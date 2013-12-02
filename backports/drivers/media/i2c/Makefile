@@ -70,6 +70,7 @@ obj-$(CPTCFG_VIDEO_S5K4ECGX)	+= s5k4ecgx.o
 obj-$(CPTCFG_VIDEO_S5C73M3)	+= s5c73m3/
 obj-$(CPTCFG_VIDEO_ADP1653)	+= adp1653.o
 obj-$(CPTCFG_VIDEO_AS3645A)	+= as3645a.o
+obj-$(CPTCFG_VIDEO_LM3560)	+= lm3560.o
 obj-$(CPTCFG_VIDEO_SMIAPP_PLL)	+= smiapp-pll.o
 obj-$(CPTCFG_VIDEO_AK881X)		+= ak881x.o
 obj-$(CPTCFG_VIDEO_IR_I2C)  += ir-kbd-i2c.o

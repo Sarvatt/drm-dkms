@@ -87,6 +87,7 @@ nouveau_abi16_swclass(struct nouveau_drm *drm)
 	case NV_04:
 		return 0x006e;
 	case NV_10:
+	case NV_11:
 	case NV_20:
 	case NV_30:
 	case NV_40:
@@ -297,7 +298,7 @@ nouveau_abi16_ioctl_channel_alloc(ABI16_IOCTL_ARGS)
 	else
 		init->pushbuf_domains = NOUVEAU_GEM_DOMAIN_GART;
 
-	if (device->card_type < NV_C0) {
+	if (device->card_type < NV_10) {
 		init->subchan[0].handle = 0x00000000;
 		init->subchan[0].grclass = 0x0000;
 		init->subchan[1].handle = NvSw;

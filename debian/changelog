@@ -1,7 +1,7 @@
-drm-dkms (3.13.0~prerc1~hwe1) precise; urgency=medium
+drm-dkms (3.13.0~rc2~hwe1) precise; urgency=medium
 
   * Switch drm-dkms to use https://backports.wiki.kernel.org backports package.
-  * Refresh backports package against drm-intel-nightly 20131031
-  * Add 2 patches from fdo#71051 to fix eDP on baytrail platforms.
+  * Refresh backports package against 3.13-rc2
+  * Merge drm-intel-fixes for VLV fixes
 
- -- Robert Hooker <sarvatt@ubuntu.com>  Thu, 31 Oct 2013 14:54:36 -0400
+ -- Robert Hooker <sarvatt@ubuntu.com>  Mon, 02 Dec 2013 14:54:36 -0400

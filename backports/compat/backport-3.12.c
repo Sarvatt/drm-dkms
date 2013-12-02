@@ -10,6 +10,7 @@
 
 #include <linux/export.h>
 #include <linux/hid.h>
+#include <linux/bug.h>
 
 /*
  * Allocator for buffer that is going to be passed to hid_output_report()
@@ -26,3 +27,4 @@ u8 *hid_alloc_report_buf(struct hid_report *report, gfp_t flags)
 	return kmalloc(len, flags);
 }
 EXPORT_SYMBOL_GPL(hid_alloc_report_buf);
+

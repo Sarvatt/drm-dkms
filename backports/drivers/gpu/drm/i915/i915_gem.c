@@ -2959,6 +2959,7 @@ static void i915_gem_write_fence(struct drm_device *dev, int reg,
 	     obj->stride, obj->tiling_mode);
 
 	switch (INTEL_INFO(dev)->gen) {
+	case 8:
 	case 7:
 	case 6:
 	case 5:
@@ -4366,6 +4367,8 @@ void i915_gem_init_swizzling(struct drm_device *dev)
 		I915_WRITE(ARB_MODE, _MASKED_BIT_ENABLE(ARB_MODE_SWIZZLE_SNB));
 	else if (IS_GEN7(dev))
 		I915_WRITE(ARB_MODE, _MASKED_BIT_ENABLE(ARB_MODE_SWIZZLE_IVB));
+	else if (IS_GEN8(dev))
+		I915_WRITE(GAMTARBMODE, _MASKED_BIT_ENABLE(ARB_MODE_SWIZZLE_BDW));
 	else
 		BUG();
 }
@@ -4444,10 +4447,9 @@ i915_gem_init_hw(struct drm_device *dev)
 	if (dev_priv->ellc_size)
 		I915_WRITE(HSW_IDICR, I915_READ(HSW_IDICR) | IDIHASHMSK(0xf));
 
-	if (IS_HSW_GT3(dev))
-		I915_WRITE(MI_PREDICATE_RESULT_2, LOWER_SLICE_ENABLED);
-	else
-		I915_WRITE(MI_PREDICATE_RESULT_2, LOWER_SLICE_DISABLED);
+	if (IS_HASWELL(dev))
+		I915_WRITE(MI_PREDICATE_RESULT_2, IS_HSW_GT3(dev) ?
+			   LOWER_SLICE_ENABLED : LOWER_SLICE_DISABLED);
 
 	if (HAS_PCH_NOP(dev)) {
 		u32 temp = I915_READ(GEN7_MSG_CTL);

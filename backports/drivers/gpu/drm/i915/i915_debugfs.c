@@ -586,7 +586,53 @@ static int i915_interrupt_info(struct seq_file *m, void *data)
 	if (ret)
 		return ret;
 
-	if (IS_VALLEYVIEW(dev)) {
+	if (INTEL_INFO(dev)->gen >= 8) {
+		int i;
+		seq_printf(m, "Master Interrupt Control:\t%08x\n",
+			   I915_READ(GEN8_MASTER_IRQ));
+
+		for (i = 0; i < 4; i++) {
+			seq_printf(m, "GT Interrupt IMR %d:\t%08x\n",
+				   i, I915_READ(GEN8_GT_IMR(i)));
+			seq_printf(m, "GT Interrupt IIR %d:\t%08x\n",
+				   i, I915_READ(GEN8_GT_IIR(i)));
+			seq_printf(m, "GT Interrupt IER %d:\t%08x\n",
+				   i, I915_READ(GEN8_GT_IER(i)));
+		}
+
+		for_each_pipe(i) {
+			seq_printf(m, "Pipe %c IMR:\t%08x\n",
+				   pipe_name(i),
+				   I915_READ(GEN8_DE_PIPE_IMR(i)));
+			seq_printf(m, "Pipe %c IIR:\t%08x\n",
+				   pipe_name(i),
+				   I915_READ(GEN8_DE_PIPE_IIR(i)));
+			seq_printf(m, "Pipe %c IER:\t%08x\n",
+				   pipe_name(i),
+				   I915_READ(GEN8_DE_PIPE_IER(i)));
+		}
+
+		seq_printf(m, "Display Engine port interrupt mask:\t%08x\n",
+			   I915_READ(GEN8_DE_PORT_IMR));
+		seq_printf(m, "Display Engine port interrupt identity:\t%08x\n",
+			   I915_READ(GEN8_DE_PORT_IIR));
+		seq_printf(m, "Display Engine port interrupt enable:\t%08x\n",
+			   I915_READ(GEN8_DE_PORT_IER));
+
+		seq_printf(m, "Display Engine misc interrupt mask:\t%08x\n",
+			   I915_READ(GEN8_DE_MISC_IMR));
+		seq_printf(m, "Display Engine misc interrupt identity:\t%08x\n",
+			   I915_READ(GEN8_DE_MISC_IIR));
+		seq_printf(m, "Display Engine misc interrupt enable:\t%08x\n",
+			   I915_READ(GEN8_DE_MISC_IER));
+
+		seq_printf(m, "PCU interrupt mask:\t%08x\n",
+			   I915_READ(GEN8_PCU_IMR));
+		seq_printf(m, "PCU interrupt identity:\t%08x\n",
+			   I915_READ(GEN8_PCU_IIR));
+		seq_printf(m, "PCU interrupt enable:\t%08x\n",
+			   I915_READ(GEN8_PCU_IER));
+	} else if (IS_VALLEYVIEW(dev)) {
 		seq_printf(m, "Display IER:\t%08x\n",
 			   I915_READ(VLV_IER));
 		seq_printf(m, "Display IIR:\t%08x\n",
@@ -658,7 +704,7 @@ static int i915_interrupt_info(struct seq_file *m, void *data)
 	seq_printf(m, "Interrupts received: %d\n",
 		   atomic_read(&dev_priv->irq_received));
 	for_each_ring(ring, dev_priv, i) {
-		if (IS_GEN6(dev) || IS_GEN7(dev)) {
+		if (INTEL_INFO(dev)->gen >= 6) {
 			seq_printf(m,
 				   "Graphics Interrupt mask (%s):	%08x\n",
 				   ring->name, I915_READ_IMR(ring));
@@ -1577,7 +1623,7 @@ static int i915_swizzle_info(struct seq_file *m, void *data)
 			   I915_READ16(C0DRB3));
 		seq_printf(m, "C1DRB3 = 0x%04x\n",
 			   I915_READ16(C1DRB3));
-	} else if (IS_GEN6(dev) || IS_GEN7(dev)) {
+	} else if (INTEL_INFO(dev)->gen >= 6) {
 		seq_printf(m, "MAD_DIMM_C0 = 0x%08x\n",
 			   I915_READ(MAD_DIMM_C0));
 		seq_printf(m, "MAD_DIMM_C1 = 0x%08x\n",
@@ -1586,8 +1632,12 @@ static int i915_swizzle_info(struct seq_file *m, void *data)
 			   I915_READ(MAD_DIMM_C2));
 		seq_printf(m, "TILECTL = 0x%08x\n",
 			   I915_READ(TILECTL));
-		seq_printf(m, "ARB_MODE = 0x%08x\n",
-			   I915_READ(ARB_MODE));
+		if (IS_GEN8(dev))
+			seq_printf(m, "GAMTARBMODE = 0x%08x\n",
+				   I915_READ(GAMTARBMODE));
+		else
+			seq_printf(m, "ARB_MODE = 0x%08x\n",
+				   I915_READ(ARB_MODE));
 		seq_printf(m, "DISP_ARB_CTL = 0x%08x\n",
 			   I915_READ(DISP_ARB_CTL));
 	}
@@ -1596,18 +1646,37 @@ static int i915_swizzle_info(struct seq_file *m, void *data)
 	return 0;
 }
 
-static int i915_ppgtt_info(struct seq_file *m, void *data)
+static void gen8_ppgtt_info(struct seq_file *m, struct drm_device *dev)
 {
-	struct drm_info_node *node = (struct drm_info_node *) m->private;
-	struct drm_device *dev = node->minor->dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct intel_ring_buffer *ring;
-	int i, ret;
+	struct i915_hw_ppgtt *ppgtt = dev_priv->mm.aliasing_ppgtt;
+	int unused, i;
 
+	if (!ppgtt)
+		return;
 
-	ret = mutex_lock_interruptible(&dev->struct_mutex);
-	if (ret)
-		return ret;
+	seq_printf(m, "Page directories: %d\n", ppgtt->num_pd_pages);
+	seq_printf(m, "Page tables: %d\n", ppgtt->num_pt_pages);
+	for_each_ring(ring, dev_priv, unused) {
+		seq_printf(m, "%s\n", ring->name);
+		for (i = 0; i < 4; i++) {
+			u32 offset = 0x270 + i * 8;
+			u64 pdp = I915_READ(ring->mmio_base + offset + 4);
+			pdp <<= 32;
+			pdp |= I915_READ(ring->mmio_base + offset);
+			for (i = 0; i < 4; i++)
+				seq_printf(m, "\tPDP%d 0x%016llx\n", i, pdp);
+		}
+	}
+}
+
+static void gen6_ppgtt_info(struct seq_file *m, struct drm_device *dev)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_ring_buffer *ring;
+	int i;
+
 	if (INTEL_INFO(dev)->gen == 6)
 		seq_printf(m, "GFX_MODE: 0x%08x\n", I915_READ(GFX_MODE));
 
@@ -1626,6 +1695,22 @@ static int i915_ppgtt_info(struct seq_file *m, void *data)
 		seq_printf(m, "pd gtt offset: 0x%08x\n", ppgtt->pd_offset);
 	}
 	seq_printf(m, "ECOCHK: 0x%08x\n", I915_READ(GAM_ECOCHK));
+}
+
+static int i915_ppgtt_info(struct seq_file *m, void *data)
+{
+	struct drm_info_node *node = (struct drm_info_node *) m->private;
+	struct drm_device *dev = node->minor->dev;
+
+	int ret = mutex_lock_interruptible(&dev->struct_mutex);
+	if (ret)
+		return ret;
+
+	if (INTEL_INFO(dev)->gen >= 8)
+		gen8_ppgtt_info(m, dev);
+	else if (INTEL_INFO(dev)->gen >= 6)
+		gen6_ppgtt_info(m, dev);
+
 	mutex_unlock(&dev->struct_mutex);
 
 	return 0;
@@ -1937,6 +2022,7 @@ static const char * const pipe_crc_sources[] = {
 	"DP-B",
 	"DP-C",
 	"DP-D",
+	"auto",
 };
 
 static const char *pipe_crc_source_name(enum intel_pipe_crc_source source)
@@ -1965,10 +2051,13 @@ static int display_crc_ctl_open(struct inode *inode, struct file *file)
 	return single_open(file, display_crc_ctl_show, dev);
 }
 
-static int i8xx_pipe_crc_ctl_reg(enum intel_pipe_crc_source source,
+static int i8xx_pipe_crc_ctl_reg(enum intel_pipe_crc_source *source,
 				 uint32_t *val)
 {
-	switch (source) {
+	if (*source == INTEL_PIPE_CRC_SOURCE_AUTO)
+		*source = INTEL_PIPE_CRC_SOURCE_PIPE;
+
+	switch (*source) {
 	case INTEL_PIPE_CRC_SOURCE_PIPE:
 		*val = PIPE_CRC_ENABLE | PIPE_CRC_INCLUDE_BORDER_I8XX;
 		break;
@@ -1982,18 +2071,82 @@ static int i8xx_pipe_crc_ctl_reg(enum intel_pipe_crc_source source,
 	return 0;
 }
 
-static int vlv_pipe_crc_ctl_reg(enum intel_pipe_crc_source source,
+static int i9xx_pipe_crc_auto_source(struct drm_device *dev, enum pipe pipe,
+				     enum intel_pipe_crc_source *source)
+{
+	struct intel_encoder *encoder;
+	struct intel_crtc *crtc;
+	struct intel_digital_port *dig_port;
+	int ret = 0;
+
+	*source = INTEL_PIPE_CRC_SOURCE_PIPE;
+
+	mutex_lock(&dev->mode_config.mutex);
+	list_for_each_entry(encoder, &dev->mode_config.encoder_list,
+			    base.head) {
+		if (!encoder->base.crtc)
+			continue;
+
+		crtc = to_intel_crtc(encoder->base.crtc);
+
+		if (crtc->pipe != pipe)
+			continue;
+
+		switch (encoder->type) {
+		case INTEL_OUTPUT_TVOUT:
+			*source = INTEL_PIPE_CRC_SOURCE_TV;
+			break;
+		case INTEL_OUTPUT_DISPLAYPORT:
+		case INTEL_OUTPUT_EDP:
+			dig_port = enc_to_dig_port(&encoder->base);
+			switch (dig_port->port) {
+			case PORT_B:
+				*source = INTEL_PIPE_CRC_SOURCE_DP_B;
+				break;
+			case PORT_C:
+				*source = INTEL_PIPE_CRC_SOURCE_DP_C;
+				break;
+			case PORT_D:
+				*source = INTEL_PIPE_CRC_SOURCE_DP_D;
+				break;
+			default:
+				WARN(1, "nonexisting DP port %c\n",
+				     port_name(dig_port->port));
+				break;
+			}
+			break;
+		}
+	}
+	mutex_unlock(&dev->mode_config.mutex);
+
+	return ret;
+}
+
+static int vlv_pipe_crc_ctl_reg(struct drm_device *dev,
+				enum pipe pipe,
+				enum intel_pipe_crc_source *source,
 				uint32_t *val)
 {
-	switch (source) {
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	bool need_stable_symbols = false;
+
+	if (*source == INTEL_PIPE_CRC_SOURCE_AUTO) {
+		int ret = i9xx_pipe_crc_auto_source(dev, pipe, source);
+		if (ret)
+			return ret;
+	}
+
+	switch (*source) {
 	case INTEL_PIPE_CRC_SOURCE_PIPE:
 		*val = PIPE_CRC_ENABLE | PIPE_CRC_SOURCE_PIPE_VLV;
 		break;
 	case INTEL_PIPE_CRC_SOURCE_DP_B:
 		*val = PIPE_CRC_ENABLE | PIPE_CRC_SOURCE_DP_B_VLV;
+		need_stable_symbols = true;
 		break;
 	case INTEL_PIPE_CRC_SOURCE_DP_C:
 		*val = PIPE_CRC_ENABLE | PIPE_CRC_SOURCE_DP_C_VLV;
+		need_stable_symbols = true;
 		break;
 	case INTEL_PIPE_CRC_SOURCE_NONE:
 		*val = 0;
@@ -2002,14 +2155,47 @@ static int vlv_pipe_crc_ctl_reg(enum intel_pipe_crc_source source,
 		return -EINVAL;
 	}
 
+	/*
+	 * When the pipe CRC tap point is after the transcoders we need
+	 * to tweak symbol-level features to produce a deterministic series of
+	 * symbols for a given frame. We need to reset those features only once
+	 * a frame (instead of every nth symbol):
+	 *   - DC-balance: used to ensure a better clock recovery from the data
+	 *     link (SDVO)
+	 *   - DisplayPort scrambling: used for EMI reduction
+	 */
+	if (need_stable_symbols) {
+		uint32_t tmp = I915_READ(PORT_DFT2_G4X);
+
+		WARN_ON(!IS_G4X(dev));
+
+		tmp |= DC_BALANCE_RESET_VLV;
+		if (pipe == PIPE_A)
+			tmp |= PIPE_A_SCRAMBLE_RESET;
+		else
+			tmp |= PIPE_B_SCRAMBLE_RESET;
+
+		I915_WRITE(PORT_DFT2_G4X, tmp);
+	}
+
 	return 0;
 }
 
 static int i9xx_pipe_crc_ctl_reg(struct drm_device *dev,
-				 enum intel_pipe_crc_source source,
+				 enum pipe pipe,
+				 enum intel_pipe_crc_source *source,
 				 uint32_t *val)
 {
-	switch (source) {
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	bool need_stable_symbols = false;
+
+	if (*source == INTEL_PIPE_CRC_SOURCE_AUTO) {
+		int ret = i9xx_pipe_crc_auto_source(dev, pipe, source);
+		if (ret)
+			return ret;
+	}
+
+	switch (*source) {
 	case INTEL_PIPE_CRC_SOURCE_PIPE:
 		*val = PIPE_CRC_ENABLE | PIPE_CRC_SOURCE_PIPE_I9XX;
 		break;
@@ -2022,16 +2208,19 @@ static int i9xx_pipe_crc_ctl_reg(struct drm_device *dev,
 		if (!IS_G4X(dev))
 			return -EINVAL;
 		*val = PIPE_CRC_ENABLE | PIPE_CRC_SOURCE_DP_B_G4X;
+		need_stable_symbols = true;
 		break;
 	case INTEL_PIPE_CRC_SOURCE_DP_C:
 		if (!IS_G4X(dev))
 			return -EINVAL;
 		*val = PIPE_CRC_ENABLE | PIPE_CRC_SOURCE_DP_C_G4X;
+		need_stable_symbols = true;
 		break;
 	case INTEL_PIPE_CRC_SOURCE_DP_D:
 		if (!IS_G4X(dev))
 			return -EINVAL;
 		*val = PIPE_CRC_ENABLE | PIPE_CRC_SOURCE_DP_D_G4X;
+		need_stable_symbols = true;
 		break;
 	case INTEL_PIPE_CRC_SOURCE_NONE:
 		*val = 0;
@@ -2040,13 +2229,75 @@ static int i9xx_pipe_crc_ctl_reg(struct drm_device *dev,
 		return -EINVAL;
 	}
 
+	/*
+	 * When the pipe CRC tap point is after the transcoders we need
+	 * to tweak symbol-level features to produce a deterministic series of
+	 * symbols for a given frame. We need to reset those features only once
+	 * a frame (instead of every nth symbol):
+	 *   - DC-balance: used to ensure a better clock recovery from the data
+	 *     link (SDVO)
+	 *   - DisplayPort scrambling: used for EMI reduction
+	 */
+	if (need_stable_symbols) {
+		uint32_t tmp = I915_READ(PORT_DFT2_G4X);
+
+		WARN_ON(!IS_G4X(dev));
+
+		I915_WRITE(PORT_DFT_I9XX,
+			   I915_READ(PORT_DFT_I9XX) | DC_BALANCE_RESET);
+
+		if (pipe == PIPE_A)
+			tmp |= PIPE_A_SCRAMBLE_RESET;
+		else
+			tmp |= PIPE_B_SCRAMBLE_RESET;
+
+		I915_WRITE(PORT_DFT2_G4X, tmp);
+	}
+
 	return 0;
 }
 
-static int ilk_pipe_crc_ctl_reg(enum intel_pipe_crc_source source,
+static void vlv_undo_pipe_scramble_reset(struct drm_device *dev,
+					 enum pipe pipe)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	uint32_t tmp = I915_READ(PORT_DFT2_G4X);
+
+	if (pipe == PIPE_A)
+		tmp &= ~PIPE_A_SCRAMBLE_RESET;
+	else
+		tmp &= ~PIPE_B_SCRAMBLE_RESET;
+	if (!(tmp & PIPE_SCRAMBLE_RESET_MASK))
+		tmp &= ~DC_BALANCE_RESET_VLV;
+	I915_WRITE(PORT_DFT2_G4X, tmp);
+
+}
+
+static void g4x_undo_pipe_scramble_reset(struct drm_device *dev,
+					 enum pipe pipe)
+{
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	uint32_t tmp = I915_READ(PORT_DFT2_G4X);
+
+	if (pipe == PIPE_A)
+		tmp &= ~PIPE_A_SCRAMBLE_RESET;
+	else
+		tmp &= ~PIPE_B_SCRAMBLE_RESET;
+	I915_WRITE(PORT_DFT2_G4X, tmp);
+
+	if (!(tmp & PIPE_SCRAMBLE_RESET_MASK)) {
+		I915_WRITE(PORT_DFT_I9XX,
+			   I915_READ(PORT_DFT_I9XX) & ~DC_BALANCE_RESET);
+	}
+}
+
+static int ilk_pipe_crc_ctl_reg(enum intel_pipe_crc_source *source,
 				uint32_t *val)
 {
-	switch (source) {
+	if (*source == INTEL_PIPE_CRC_SOURCE_AUTO)
+		*source = INTEL_PIPE_CRC_SOURCE_PIPE;
+
+	switch (*source) {
 	case INTEL_PIPE_CRC_SOURCE_PLANE1:
 		*val = PIPE_CRC_ENABLE | PIPE_CRC_SOURCE_PRIMARY_ILK;
 		break;
@@ -2066,10 +2317,13 @@ static int ilk_pipe_crc_ctl_reg(enum intel_pipe_crc_source source,
 	return 0;
 }
 
-static int ivb_pipe_crc_ctl_reg(enum intel_pipe_crc_source source,
+static int ivb_pipe_crc_ctl_reg(enum intel_pipe_crc_source *source,
 				uint32_t *val)
 {
-	switch (source) {
+	if (*source == INTEL_PIPE_CRC_SOURCE_AUTO)
+		*source = INTEL_PIPE_CRC_SOURCE_PF;
+
+	switch (*source) {
 	case INTEL_PIPE_CRC_SOURCE_PLANE1:
 		*val = PIPE_CRC_ENABLE | PIPE_CRC_SOURCE_PRIMARY_IVB;
 		break;
@@ -2105,15 +2359,15 @@ static int pipe_crc_set_source(struct drm_device *dev, enum pipe pipe,
 		return -EINVAL;
 
 	if (IS_GEN2(dev))
-		ret = i8xx_pipe_crc_ctl_reg(source, &val);
+		ret = i8xx_pipe_crc_ctl_reg(&source, &val);
 	else if (INTEL_INFO(dev)->gen < 5)
-		ret = i9xx_pipe_crc_ctl_reg(dev, source, &val);
+		ret = i9xx_pipe_crc_ctl_reg(dev, pipe, &source, &val);
 	else if (IS_VALLEYVIEW(dev))
-		ret = vlv_pipe_crc_ctl_reg(source, &val);
+		ret = vlv_pipe_crc_ctl_reg(dev,pipe, &source, &val);
 	else if (IS_GEN5(dev) || IS_GEN6(dev))
-		ret = ilk_pipe_crc_ctl_reg(source, &val);
+		ret = ilk_pipe_crc_ctl_reg(&source, &val);
 	else
-		ret = ivb_pipe_crc_ctl_reg(source, &val);
+		ret = ivb_pipe_crc_ctl_reg(&source, &val);
 
 	if (ret != 0)
 		return ret;
@@ -2155,6 +2409,11 @@ static int pipe_crc_set_source(struct drm_device *dev, enum pipe pipe,
 		spin_unlock_irq(&pipe_crc->lock);
 
 		kfree(entries);
+
+		if (IS_G4X(dev))
+			g4x_undo_pipe_scramble_reset(dev, pipe);
+		else if (IS_VALLEYVIEW(dev))
+			vlv_undo_pipe_scramble_reset(dev, pipe);
 	}
 
 	return 0;
@@ -2783,7 +3042,7 @@ static int i915_debugfs_create(struct dentry *root,
 	return drm_add_fake_info_node(minor, ent, fops);
 }
 
-static struct drm_info_list i915_debugfs_list[] = {
+static const struct drm_info_list i915_debugfs_list[] = {
 	{"i915_capabilities", i915_capabilities, 0},
 	{"i915_gem_objects", i915_gem_object_info, 0},
 	{"i915_gem_gtt", i915_gem_gtt_info, 0},
@@ -2827,7 +3086,7 @@ static struct drm_info_list i915_debugfs_list[] = {
 };
 #define I915_DEBUGFS_ENTRIES ARRAY_SIZE(i915_debugfs_list)
 
-static struct i915_debugfs_files {
+static const struct i915_debugfs_files {
 	const char *name;
 	const struct file_operations *fops;
 } i915_debugfs_files[] = {

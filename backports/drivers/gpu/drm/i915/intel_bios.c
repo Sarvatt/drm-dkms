@@ -624,11 +624,11 @@ static void parse_ddi_port(struct drm_i915_private *dev_priv, enum port port,
 
 	aux_channel = child->raw[25];
 
-	is_dvi = child->common.device_type & (1 << 4);
-	is_dp = child->common.device_type & (1 << 2);
-	is_crt = child->common.device_type & (1 << 0);
-	is_hdmi = is_dvi && (child->common.device_type & (1 << 11)) == 0;
-	is_edp = is_dp && (child->common.device_type & (1 << 12));
+	is_dvi = child->common.device_type & DEVICE_TYPE_TMDS_DVI_SIGNALING;
+	is_dp = child->common.device_type & DEVICE_TYPE_DISPLAYPORT_OUTPUT;
+	is_crt = child->common.device_type & DEVICE_TYPE_ANALOG_OUTPUT;
+	is_hdmi = is_dvi && (child->common.device_type & DEVICE_TYPE_NOT_HDMI_OUTPUT) == 0;
+	is_edp = is_dp && (child->common.device_type & DEVICE_TYPE_INTERNAL_CONNECTOR);
 
 	info->supports_dvi = is_dvi;
 	info->supports_hdmi = is_hdmi;
@@ -790,7 +790,12 @@ init_vbt_defaults(struct drm_i915_private *dev_priv)
 
 	/* Default to using SSC */
 	dev_priv->vbt.lvds_use_ssc = 1;
-	dev_priv->vbt.lvds_ssc_freq = intel_bios_ssc_frequency(dev, 1);
+	/*
+	 * Core/SandyBridge/IvyBridge use alternative (120MHz) reference
+	 * clock for LVDS.
+	 */
+	dev_priv->vbt.lvds_ssc_freq = intel_bios_ssc_frequency(dev,
+			!HAS_PCH_SPLIT(dev));
 	DRM_DEBUG_KMS("Set default to SSC at %dMHz\n", dev_priv->vbt.lvds_ssc_freq);
 
 	for (port = PORT_A; port < I915_MAX_PORTS; port++) {

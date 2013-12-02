@@ -370,11 +370,6 @@ static struct bin_attribute edid_attr = {
  * properties (so far, connection status, dpms, mode list & edid) and
  * generate a hotplug event so userspace knows there's a new connector
  * available.
- *
- * Note:
- * This routine should only be called *once* for each registered connector.
- * A second call for an already registered connector will trigger the BUG_ON
- * below.
  */
 int drm_sysfs_connector_add(struct drm_connector *connector)
 {
@@ -387,7 +382,6 @@ int drm_sysfs_connector_add(struct drm_connector *connector)
 	if (connector->kdev)
 		return 0;
 
-	/* We shouldn't get called more than once for the same connector */
 	connector->kdev = device_create(drm_class, dev->primary->kdev,
 					0, connector, "card%d-%s",
 					dev->primary->index, drm_get_connector_name(connector));
@@ -443,7 +437,6 @@ err_out_files:
 		device_remove_file(connector->kdev, &connector_attrs_opt1[i]);
 	for (i = 0; i < attr_cnt; i++)
 		device_remove_file(connector->kdev, &connector_attrs[i]);
-	put_device(connector->kdev);
 	device_unregister(connector->kdev);
 
 out:
@@ -476,7 +469,6 @@ void drm_sysfs_connector_remove(struct drm_connector *connector)
 	for (i = 0; i < ARRAY_SIZE(connector_attrs); i++)
 		device_remove_file(connector->kdev, &connector_attrs[i]);
 	sysfs_remove_bin_file(&connector->kdev->kobj, &edid_attr);
-	put_device(connector->kdev);
 	device_unregister(connector->kdev);
 	connector->kdev = NULL;
 }
@@ -501,6 +493,11 @@ void drm_sysfs_hotplug_event(struct drm_device *dev)
 }
 EXPORT_SYMBOL(drm_sysfs_hotplug_event);
 
+static void drm_sysfs_release(struct device *dev)
+{
+	kfree(dev);
+}
+
 /**
  * drm_sysfs_device_add - adds a class device to sysfs for a character driver
  * @dev: DRM device to be added
@@ -513,6 +510,7 @@ EXPORT_SYMBOL(drm_sysfs_hotplug_event);
 int drm_sysfs_device_add(struct drm_minor *minor)
 {
 	char *minor_str;
+	int r;
 
 	if (minor->type == DRM_MINOR_CONTROL)
 		minor_str = "controlD%d";
@@ -521,14 +519,34 @@ int drm_sysfs_device_add(struct drm_minor *minor)
         else
                 minor_str = "card%d";
 
-	minor->kdev = device_create(drm_class, minor->dev->dev,
-				    MKDEV(DRM_MAJOR, minor->index),
-				    minor, minor_str, minor->index);
-	if (IS_ERR(minor->kdev)) {
-		DRM_ERROR("device create failed %ld\n", PTR_ERR(minor->kdev));
-		return PTR_ERR(minor->kdev);
+	minor->kdev = kzalloc(sizeof(*minor->kdev), GFP_KERNEL);
+	if (!minor->kdev) {
+		r = -ENOMEM;
+		goto error;
 	}
+
+	device_initialize(minor->kdev);
+	minor->kdev->devt = MKDEV(DRM_MAJOR, minor->index);
+	minor->kdev->class = drm_class;
+	minor->kdev->type = &drm_sysfs_device_minor;
+	minor->kdev->parent = minor->dev->dev;
+	minor->kdev->release = drm_sysfs_release;
+	dev_set_drvdata(minor->kdev, minor);
+
+	r = dev_set_name(minor->kdev, minor_str, minor->index);
+	if (r < 0)
+		goto error;
+
+	r = device_add(minor->kdev);
+	if (r < 0)
+		goto error;
+
 	return 0;
+
+error:
+	DRM_ERROR("device create failed %d\n", r);
+	put_device(minor->kdev);
+	return r;
 }
 
 /**
@@ -541,7 +559,7 @@ int drm_sysfs_device_add(struct drm_minor *minor)
 void drm_sysfs_device_remove(struct drm_minor *minor)
 {
 	if (minor->kdev)
-		device_destroy(drm_class, MKDEV(DRM_MAJOR, minor->index));
+		device_unregister(minor->kdev);
 	minor->kdev = NULL;
 }
 

@@ -317,6 +317,34 @@ static void atl1e_set_multi(struct net_device *netdev)
 	}
 }
 
+static void __atl1e_rx_mode(netdev_features_t features, u32 *mac_ctrl_data)
+{
+
+	if (features & NETIF_F_RXALL) {
+		/* enable RX of ALL frames */
+		*mac_ctrl_data |= MAC_CTRL_DBG;
+	} else {
+		/* disable RX of ALL frames */
+		*mac_ctrl_data &= ~MAC_CTRL_DBG;
+	}
+}
+
+static void atl1e_rx_mode(struct net_device *netdev,
+	netdev_features_t features)
+{
+	struct atl1e_adapter *adapter = netdev_priv(netdev);
+	u32 mac_ctrl_data = 0;
+
+	netdev_dbg(adapter->netdev, "%s\n", __func__);
+
+	atl1e_irq_disable(adapter);
+	mac_ctrl_data = AT_READ_REG(&adapter->hw, REG_MAC_CTRL);
+	__atl1e_rx_mode(features, &mac_ctrl_data);
+	AT_WRITE_REG(&adapter->hw, REG_MAC_CTRL, mac_ctrl_data);
+	atl1e_irq_enable(adapter);
+}
+
+
 static void __atl1e_vlan_mode(netdev_features_t features, u32 *mac_ctrl_data)
 {
 	if (features & NETIF_F_HW_VLAN_CTAG_RX) {
@@ -375,7 +403,6 @@ static int atl1e_set_mac_addr(struct net_device *netdev, void *p)
 	return 0;
 }
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,39))
 static netdev_features_t atl1e_fix_features(struct net_device *netdev,
 	netdev_features_t features)
 {
@@ -399,9 +426,12 @@ static int atl1e_set_features(struct net_device *netdev,
 	if (changed & NETIF_F_HW_VLAN_CTAG_RX)
 		atl1e_vlan_mode(netdev, features);
 
+	if (changed & NETIF_F_RXALL)
+		atl1e_rx_mode(netdev, features);
+
+
 	return 0;
 }
-#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,39)) */
 
 /**
  * atl1e_change_mtu - Change the Maximum Transfer Unit
@@ -1063,7 +1093,8 @@ static void atl1e_setup_mac_ctrl(struct atl1e_adapter *adapter)
 		value |= MAC_CTRL_PROMIS_EN;
 	if (netdev->flags & IFF_ALLMULTI)
 		value |= MAC_CTRL_MC_ALL_EN;
-
+	if (netdev->features & NETIF_F_RXALL)
+		value |= MAC_CTRL_DBG;
 	AT_WRITE_REG(hw, REG_MAC_CTRL, value);
 }
 
@@ -1411,7 +1442,8 @@ static void atl1e_clean_rx_irq(struct atl1e_adapter *adapter, u8 que,
 			rx_page_desc[que].rx_nxseq++;
 
 			/* error packet */
-			if (prrs->pkt_flag & RRS_IS_ERR_FRAME) {
+			if ((prrs->pkt_flag & RRS_IS_ERR_FRAME) &&
+			    !(netdev->features & NETIF_F_RXALL)) {
 				if (prrs->err_flag & (RRS_ERR_BAD_CRC |
 					RRS_ERR_DRIBBLE | RRS_ERR_CODE |
 					RRS_ERR_TRUNC)) {
@@ -1424,7 +1456,10 @@ static void atl1e_clean_rx_irq(struct atl1e_adapter *adapter, u8 que,
 			}
 
 			packet_size = ((prrs->word1 >> RRS_PKT_SIZE_SHIFT) &
-					RRS_PKT_SIZE_MASK) - 4; /* CRC */
+					RRS_PKT_SIZE_MASK);
+			if (likely(!(netdev->features & NETIF_F_RXFCS)))
+				packet_size -= 4; /* CRC */
+
 			skb = netdev_alloc_skb_ip_align(netdev, packet_size);
 			if (skb == NULL)
 				goto skip_pkt;
@@ -1956,11 +1991,7 @@ void atl1e_down(struct atl1e_adapter *adapter)
 	 * reschedule our watchdog timer */
 	set_bit(__AT_DOWN, &adapter->flags);
 
-#if defined(NETIF_F_LLTX) || (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,39))
 	netif_stop_queue(netdev);
-#else
-	netif_tx_disable(netdev);
-#endif
 
 	/* reset MAC to disable all RX/TX */
 	atl1e_reset_hw(&adapter->hw);
@@ -2230,10 +2261,8 @@ static const struct net_device_ops atl1e_netdev_ops = {
 	.ndo_set_rx_mode	= atl1e_set_multi,
 	.ndo_validate_addr	= eth_validate_addr,
 	.ndo_set_mac_address	= atl1e_set_mac_addr,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,39))
 	.ndo_fix_features	= atl1e_fix_features,
 	.ndo_set_features	= atl1e_set_features,
-#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,39)) */
 	.ndo_change_mtu		= atl1e_change_mtu,
 	.ndo_do_ioctl		= atl1e_ioctl,
 	.ndo_tx_timeout		= atl1e_tx_timeout,
@@ -2253,16 +2282,12 @@ static int atl1e_init_netdev(struct net_device *netdev, struct pci_dev *pdev)
 	netdev->watchdog_timeo = AT_TX_WATCHDOG;
 	atl1e_set_ethtool_ops(netdev);
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,39))
 	netdev->hw_features = NETIF_F_SG | NETIF_F_HW_CSUM | NETIF_F_TSO |
 			      NETIF_F_HW_VLAN_CTAG_RX;
 	netdev->features = netdev->hw_features | NETIF_F_LLTX |
 			   NETIF_F_HW_VLAN_CTAG_TX;
-#else
-	netdev->features = NETIF_F_SG | NETIF_F_HW_CSUM | NETIF_F_TSO |
-			   NETIF_F_HW_VLAN_RX | NETIF_F_LLTX | NETIF_F_HW_VLAN_TX;
-#endif
-
+	/* not enabled by default */
+	netdev->hw_features |= NETIF_F_RXALL | NETIF_F_RXFCS;
 	return 0;
 }
 

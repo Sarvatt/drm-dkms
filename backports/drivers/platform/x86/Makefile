@@ -50,7 +50,6 @@ obj-$(CPTCFG_INTEL_IPS)		+= intel_ips.o
 #obj-$(CPTCFG_INTEL_OAKTRAIL)	+= intel_oaktrail.o
 #obj-$(CPTCFG_SAMSUNG_Q10)	+= samsung-q10.o
 #obj-$(CPTCFG_APPLE_GMUX)	+= apple-gmux.o
-#obj-$(CPTCFG_CHROMEOS_LAPTOP)	+= chromeos_laptop.o
 #obj-$(CPTCFG_INTEL_RST)		+= intel-rst.o
 #obj-$(CPTCFG_INTEL_SMARTCONNECT)	+= intel-smartconnect.o
 #

@@ -57,4 +57,5 @@ obj-$(CPTCFG_DRM_OMAP)	+= omapdrm/
 obj-$(CPTCFG_DRM_TILCDC)	+= tilcdc/
 obj-$(CPTCFG_DRM_QXL) += qxl/
 obj-$(CPTCFG_DRM_MSM) += msm/
+obj-$(CPTCFG_DRM_TEGRA) += tegra/
 obj-y			+= i2c/
