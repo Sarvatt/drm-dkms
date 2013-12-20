@@ -1,0 +1,38 @@
+From 7795fe56d862f26ab87e1a2d620ff1cc771a6aa7 Mon Sep 17 00:00:00 2001
+From: Robert Hooker <sarvatt@ubuntu.com>
+Date: Fri, 20 Dec 2013 09:31:09 -0500
+Subject: [PATCH] Revert "radeon_pm: fix oops in hwmon_attributes_visible() and
+ radeon_hwmon_show_temp_thresh()"
+
+This reverts commit e4158f1b1090d362a7c998bd654cc3fe8f5c863c.
+---
+ backports/drivers/gpu/drm/radeon/radeon_pm.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/backports/drivers/gpu/drm/radeon/radeon_pm.c b/backports/drivers/gpu/drm/radeon/radeon_pm.c
+index 984097b..dc75bb6 100644
+--- a/backports/drivers/gpu/drm/radeon/radeon_pm.c
++++ b/backports/drivers/gpu/drm/radeon/radeon_pm.c
+@@ -552,7 +552,8 @@ static ssize_t radeon_hwmon_show_temp_thresh(struct device *dev,
+ 					     struct device_attribute *attr,
+ 					     char *buf)
+ {
+-	struct radeon_device *rdev = dev_get_drvdata(dev);
++	struct drm_device *ddev = dev_get_drvdata(dev);
++	struct radeon_device *rdev = ddev->dev_private;
+ 	int hyst = to_sensor_dev_attr(attr)->index;
+ 	int temp;
+ 
+@@ -579,7 +580,8 @@ static umode_t hwmon_attributes_visible(struct kobject *kobj,
+ 					struct attribute *attr, int index)
+ {
+ 	struct device *dev = container_of(kobj, struct device, kobj);
+-	struct radeon_device *rdev = dev_get_drvdata(dev);
++	struct drm_device *ddev = dev_get_drvdata(dev);
++	struct radeon_device *rdev = ddev->dev_private;
+ 
+ 	/* Skip limit attributes if DPM is not enabled */
+ 	if (rdev->pm.pm_method != PM_METHOD_DPM &&
+-- 
+1.8.3.2
+

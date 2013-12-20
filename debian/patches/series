@@ -4,3 +4,5 @@
 0003-more-kconfig-fixes.patch
 ubuntu-3.5-fixups.patch
 3.13-fixup.patch
+0001-Revert-radeon_pm-fix-oops-in-hwmon_attributes_visibl.patch
+0001-Revert-drm-radeon-dpm-Convert-to-use-devm_hwmon_regi.patch
