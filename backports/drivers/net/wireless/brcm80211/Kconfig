@@ -7,6 +7,8 @@ config BRCMSMAC
 	depends on m
 	depends on MAC80211
 	depends on BCMA
+	select NEW_LEDS if BCMA_DRIVER_GPIO
+	select LEDS_CLASS if BCMA_DRIVER_GPIO
 	select BRCMUTIL
 	select BACKPORT_FW_LOADER
 	depends on CRC_CCITT

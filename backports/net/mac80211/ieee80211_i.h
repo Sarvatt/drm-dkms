@@ -1236,6 +1236,7 @@ struct ieee80211_csa_ie {
 	u8 mode;
 	u8 count;
 	u8 ttl;
+	u16 pre_value;
 };
 
 /* Parsed Information Elements */
