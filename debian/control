@@ -1,11 +1,11 @@
-Source: drm-dkms-i915
+Source: drm-dkms-i915-ath9k
 Section: kernel
 Priority: optional
 Maintainer: Timo Aaltonen <tjaalton@ubuntu.com>
 Build-Depends: debhelper (>= 7.0.50~), dkms (>=1.95), quilt
 Standards-Version: 3.9.4
 
-Package: drm-dkms-i915
+Package: drm-dkms-i915-ath9k
 Architecture: amd64 i386
 Depends: dkms (>= 1.95),
  findutils (>= 4),

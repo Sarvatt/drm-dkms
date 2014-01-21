@@ -1,7 +1,7 @@
-drm-dkms-i915 (3.13.0~rc4~hwe1) precise; urgency=medium
+drm-dkms-i915-ath9k (3.13.0~rc4~hwe1) precise; urgency=medium
 
   * Switch drm-dkms to use https://backports.wiki.kernel.org backports package.
   * Refresh backports package against 3.13-rc4
-  * Only build drm and i915 modules.
+  * Build drm, i915, and ath9k related modules.
 
  -- Robert Hooker <sarvatt@ubuntu.com>  Fri, 20 Dec 2013 08:54:36 -0400
