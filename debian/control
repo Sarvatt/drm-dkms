@@ -7,6 +7,9 @@ Standards-Version: 3.9.4
 
 Package: drm-dkms-i915-ath9k
 Architecture: amd64 i386
+Provides: drm-dkms-i915
+Conflicts: drm-dkms-i915
+Replaces: drm-dkms-i915
 Depends: dkms (>= 1.95),
  findutils (>= 4),
  ${misc:Depends},
