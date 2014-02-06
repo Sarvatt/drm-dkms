@@ -1,0 +1,53 @@
+diff --git a/drivers/gpu/drm/i915/intel_dp.c b/drivers/gpu/drm/i915/intel_dp.c
+index 30c627c..6b472d4 100644
+--- a/backports/drivers/gpu/drm/i915/intel_dp.c
++++ b/backports/drivers/gpu/drm/i915/intel_dp.c
+@@ -1081,7 +1081,7 @@ void ironlake_edp_panel_vdd_on(struct intel_dp *intel_dp)
+ 	u32 pp;
+ 	u32 pp_stat_reg, pp_ctrl_reg;
+ 
+-	if (!is_edp(intel_dp))
++	if (!is_edp(intel_dp) && !IS_VALLEYVIEW(dev))
+ 		return;
+ 
+ 	WARN(intel_dp->want_panel_vdd,
+@@ -1157,7 +1157,9 @@ static void ironlake_panel_vdd_work(struct work_struct *__work)
+ 
+ void ironlake_edp_panel_vdd_off(struct intel_dp *intel_dp, bool sync)
+ {
+-	if (!is_edp(intel_dp))
++	struct drm_device *dev = intel_dp_to_dev(intel_dp);
++
++	if (!is_edp(intel_dp) && !IS_VALLEYVIEW(dev))
+ 		return;
+ 
+ 	WARN(!intel_dp->want_panel_vdd, "eDP VDD not forced on");
+@@ -1184,7 +1186,7 @@ void ironlake_edp_panel_on(struct intel_dp *intel_dp)
+ 	u32 pp;
+ 	u32 pp_ctrl_reg;
+ 
+-	if (!is_edp(intel_dp))
++	if (!is_edp(intel_dp) && !IS_VALLEYVIEW(dev))
+ 		return;
+ 
+ 	DRM_DEBUG_KMS("Turn eDP power on\n");
+@@ -1228,7 +1230,7 @@ void ironlake_edp_panel_off(struct intel_dp *intel_dp)
+ 	u32 pp;
+ 	u32 pp_ctrl_reg;
+ 
+-	if (!is_edp(intel_dp))
++	if (!is_edp(intel_dp) && !IS_VALLEYVIEW(dev))
+ 		return;
+ 
+ 	DRM_DEBUG_KMS("Turn eDP power off\n");
+@@ -1809,9 +1811,9 @@ static void intel_enable_dp(struct intel_encoder *encoder)
+ 	intel_dp_sink_dpms(intel_dp, DRM_MODE_DPMS_ON);
+ 	intel_dp_start_link_train(intel_dp);
+ 	ironlake_edp_panel_on(intel_dp);
+-	ironlake_edp_panel_vdd_off(intel_dp, true);
+ 	intel_dp_complete_link_train(intel_dp);
+ 	intel_dp_stop_link_train(intel_dp);
++	ironlake_edp_panel_vdd_off(intel_dp, true);
+ }
+ 
+ static void g4x_enable_dp(struct intel_encoder *encoder)
