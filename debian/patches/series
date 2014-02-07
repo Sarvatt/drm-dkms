@@ -8,4 +8,3 @@ ubuntu-3.5-fixups.patch
 0001-Revert-drm-radeon-dpm-Convert-to-use-devm_hwmon_regi.patch
 only-build-i915.patch
 #i915_and_ath9k.patch
-force-panel-power.patch
