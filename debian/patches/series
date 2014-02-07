@@ -8,3 +8,5 @@ ubuntu-3.5-fixups.patch
 0001-Revert-drm-radeon-dpm-Convert-to-use-devm_hwmon_regi.patch
 only-build-i915.patch
 #i915_and_ath9k.patch
+drm-i915-vlv-fix-DP-PHY-lockup.patch
+drm-i915-vlv-fix-hotplug-detect.patch
