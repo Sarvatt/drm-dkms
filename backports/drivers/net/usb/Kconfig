@@ -300,13 +300,13 @@ config USB_NET_CDC_MBIM
 
 config USB_NET_DM9601
 	depends on n
-	tristate "Davicom DM9601 based USB 1.1 10/100 ethernet devices"
+	tristate "Davicom DM96xx based USB 10/100 ethernet devices"
 	depends on m
 	depends on USB_USBNET
 	depends on CRC32
 	help
-	  This option adds support for Davicom DM9601 based USB 1.1
-	  10/100 Ethernet adapters.
+	  This option adds support for Davicom DM9601/DM9620/DM9621A
+	  based USB 10/100 Ethernet adapters.
 
 config USB_NET_SR9700
 	depends on n
