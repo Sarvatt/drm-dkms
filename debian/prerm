@@ -1,6 +1,6 @@
 #!/bin/sh
 
-NAME=drm-dkms-i915
+NAME=drm-dkms-i915-ath9k
 
 DEBVERS=$(dpkg-query -W -f='${Version}' $NAME | awk -F- '{print $1}')
 VERSION=$(echo "$DEBVERS" | sed -e 's/[+-].*//' -e 's/~//g') 

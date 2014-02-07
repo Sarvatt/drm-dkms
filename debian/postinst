@@ -6,7 +6,7 @@
 
 set -e
 
-PACKAGE_NAME=drm-dkms-i915
+PACKAGE_NAME=drm-dkms-i915-ath9k
 
 CVERSION=`dpkg-query -W -f='${Version}' $PACKAGE_NAME | awk -F "-" '{print $1}' | cut -d\: -f2 \
 	| sed -e 's/[+-].*//' -e 's/~//g')`

@@ -1,8 +1,8 @@
-drm-dkms-i915 (3.13.2~hwe1) precise; urgency=medium
+drm-dkms-i915-ath9k (3.13.2~hwe1) precise; urgency=medium
 
   * Switch drm-dkms to use https://backports.wiki.kernel.org backports package.
   * Refresh backports package against 3.13.2
-  * Build only i915 and drm and related modules.
+  * Build only i915, drm and ath9k related modules.
   * Add 2 patches queued for 3.13.3 required for baytrail devices.
 
  -- Robert Hooker <sarvatt@ubuntu.com>  Fri, 07 Feb 2014 08:54:36 -0400
